@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  app:
+    # dockerfile build
+    # build: .
+    image: tingproject:test
+    volumes:
+      - .:/app
+      - /app/node_modules
+    working_dir: /app    
+    # command: npm start
+    ports:
+      - "4500:4500"
+
+    
+      
+    
