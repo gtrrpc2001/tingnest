@@ -1,17 +1,33 @@
 version: '3.8'
 services:
-  app:
+  test:
+    image: tingproject:0.1
+    volumes:
+      - .:/app
+      - /app/node_modules
+    working_dir: /app
+    ports:
+      - "${DEFAULT}:${DEFAULT}"
+    environment:
+      - NODE_ENV=production
+      - BACKENDPORT=${DEFAULT}
+    command: pm2-runtime start ecosystem.config.js --env production
+
+  deploy:
     # dockerfile build
     # build: .
-    image: tingproject:test
+    image: tingproject:0.1
     volumes:
       - .:/app
       - /app/node_modules
     working_dir: /app    
     # command: npm start
     ports:
-      - "4500:4500"
-
+      - "${BACKENDPORT}:${BACKENDPORT}"
+    environment:
+      - NODE_ENV=development
+      - BACKENDPORT=${BACKENDPORT}
+    command: pm2-runtime start ecosystem.config.js --env development
     
-      
+    
     
