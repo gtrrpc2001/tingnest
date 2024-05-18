@@ -98,6 +98,7 @@ export class PositionService {
                     .select('useridx,aka,latitude,longitude')
                     .where("position.id != :id",{"id":id})
                     .getRawMany()
+    console.log(result?.length);
     return result
     }catch(E){
       console.log(E)

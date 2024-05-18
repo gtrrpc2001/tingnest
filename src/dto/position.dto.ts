@@ -12,7 +12,7 @@ export class PositionDTO{
 
     @IsString()
     @ApiProperty({type:String, description:''})
-    readonly id:string;
+    readonly id?:string;
 
     @IsString()
     @IsOptional()

@@ -3,10 +3,18 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './module/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
+// import * as fs from 'fs';
+
 
 async function bootstrap() {
+
+  // const httpsOptions = {
+  //   key: fs.readFileSync('/etc/letsencrypt/live/yourdomain.com/privkey.pem'),
+  //   cert: fs.readFileSync('/etc/letsencrypt/live/yourdomain.com/fullchain.pem'),
+  // };
   const app = await NestFactory.create(AppModule);
-  
+  // const app = await NestFactory.create(AppModule,{httpsOptions});
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -35,7 +43,7 @@ async function bootstrap() {
     methods:['POST', 'PUT', 'DELETE', 'GET'],
     credentials:true
   });  
-  
-  await app.listen('4500');
+
+  await app.listen(process.env.BACKENDPORT);
 }
 bootstrap();

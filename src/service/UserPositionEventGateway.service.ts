@@ -30,7 +30,7 @@ export class UserPositionEventGateway implements OnGatewayConnection,OnGatewayDi
     client.emit('join',client.id)
 
     await this.getUserPosition()
-
+    this.positionManager.AddTestIndex()
     console.log('connect success',client.id)    
   }
 
@@ -47,8 +47,7 @@ export class UserPositionEventGateway implements OnGatewayConnection,OnGatewayDi
 
     //필요한 정보 보내기
 
-    const result = this.positionManager.getPosition(client.id,payload)
-    
+    const result = this.positionManager.getPosition(client.id,payload)    
     client.emit('UserPositionData',result)
 
     console.log('DataOff')    
@@ -75,14 +74,14 @@ export class UserPositionEventGateway implements OnGatewayConnection,OnGatewayDi
           clientId: index,
           aka: user.aka,
           userIdx: user.useridx,
-          userId: user.id,
+          // userId: user.id,
           position: {
             latitude: user.latitude,
             longitude: user.longitude
           }
         })
       })
-    }    
+    }        
   }
 
   updatePosition = async (body:Position) => {
@@ -96,7 +95,7 @@ export class UserPositionEventGateway implements OnGatewayConnection,OnGatewayDi
   }
 
   changeToDto = (body:Position):PositionDTO => {
-      const model:PositionDTO = {useridx:body.userIdx,id:body.userId,latitude:body.position.latitude,longitude:body.position.longitude,aka:body.aka}      
+      const model:PositionDTO = {useridx:body.userIdx,latitude:body.position.latitude,longitude:body.position.longitude,aka:body.aka}      
       return model
   }
 }

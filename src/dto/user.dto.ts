@@ -8,6 +8,11 @@ export class UserDTO{
     @IsString()
     @ApiProperty({type:String, description:'post 구분 값'})
     readonly kind: string;
+
+    @IsOptional()
+    @IsNumber()
+    @ApiProperty({type:"number", description:''})
+    readonly idx:number;
     
     @IsOptional()
     @IsString()

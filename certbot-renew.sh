@@ -1,0 +1,1 @@
+certbot renew --quiet --post-hook "pm2 restart TINGPROJECT"

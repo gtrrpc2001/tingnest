@@ -36,11 +36,17 @@
 # ENTRYPOINT npm run start:prod
 
 FROM node:18-alpine
+
+# RUN apk update && apk add --no-cache cron
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 RUN npm install pm2 -g
+# COPY certbot-renew.sh /certbot-renew.sh
+# RUN chmod +x /certbot-renew.sh
 COPY . .
+# COPY entrypoint.sh /entrypoint.sh
 EXPOSE 4500
 # ENTRYPOINT npm run start:prod
+# ENTRYPOINT ["/entrypoint.sh"]
 ENTRYPOINT ["pm2-runtime", "ecosystem.config.js"]

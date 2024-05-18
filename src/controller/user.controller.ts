@@ -11,8 +11,10 @@ export class UserController {
 
   @Post("/api_getdata")
  async postAll(    
-   @Body() body: UserDTO): Promise<any> {        
-    return await this.userService.gubunKind(body);
+   @Res() res: Response,
+   @Body() body: UserDTO,
+   ): Promise<any> {            
+    return await this.userService.gubunKind(body,res);
   }
   
   @Get('/mapProfiles')

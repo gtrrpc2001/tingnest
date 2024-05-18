@@ -27,7 +27,7 @@ export class UserService {
 
   activate = this.config.get<string>('USER_ACTIVITY_LOGIN')
 
-  async gubunKind(body:UserDTO): Promise<any>{   
+  async gubunKind(body:UserDTO,res?:Response): Promise<any>{   
     switch(body.kind){
         case "idDupe" :
             return await this.checkIDDupe(body.id);
@@ -53,7 +53,11 @@ export class UserService {
         case "updateToken":
             return await this.updateToken(body);
         case "profile":
-            return await this.getProfile(body.id);        
+            return await this.getProfile(body.id);
+        case "markerClickInfo":          
+            return await this.getOtherUserProfile(body.idx)
+        case "markerClickProfile":
+            return await this.sendProfile(res,body.idx)
         case null  :
             return false?.toString();
 
@@ -212,21 +216,14 @@ export class UserService {
     try{      
       const result:UserEntity[] = await this.userRepository.createQueryBuilder('user')
                                   .select('profile')
-                                  .where({"id":id})
+                                  .where({"id":id})                                  
                                   // .where("user.id != :id",{"id":id})                                  
-                                  // .andWhere({"activate":this.activate}) 
                                   // .where({"activate":this.activate})
                                   .getRawMany()    
       console.log(result)        
       if(result.length != 0){        
         result.map(d => {                                                                      
-        const readableStream = new Readable({
-          read() {
-              this.push(d.profile);              
-              this.push(null);
-            }
-          })
-          readableStream.pipe(res);          
+          this.ResponseProfile(res, d.profile)
         })
       }
       else
@@ -235,6 +232,34 @@ export class UserService {
     }catch(E){
       res.send({msg:E})
     }
+  }
+
+  async sendProfile(res: Response,idx:number):Promise<any>{
+    try{      
+      const result:UserEntity = await this.userRepository.createQueryBuilder('user')
+                                  .select('profile')
+                                  .where({"idx":idx})
+                                  // .andWhere({"activate":this.activate})                                                                    
+                                  .getRawOne()
+      if(result){
+        this.ResponseProfile(res,result.profile)
+      }
+      else
+        res.send({msg:0})      
+
+    }catch(E){
+      res.send({msg:E})
+    }
+  }
+
+  ResponseProfile = (res: Response,profile:Buffer) => {
+    const readableStream = new Readable({
+      read() {
+          this.push(profile);
+          this.push(null);
+        }
+      })
+      readableStream.pipe(res);
   }
 
   async getProfile(id:string): Promise<any>{
@@ -250,9 +275,22 @@ export class UserService {
     }catch(E){
       console.log("getProfile" + E)
       return false?.toString();
-    }   
-      
-  } 
+    } 
+  }
+  
+  async getOtherUserProfile(idx:number): Promise<any>{
+    try{
+       const result:UserEntity = await this.userRepository.createQueryBuilder()
+                                  .select('birth,gender,aka')
+                                  .where({"idx":idx})
+                                  .getRawOne()                                         
+       const user = {birth:result.birth,gender:result.gender,aka:result.aka}         
+      return commonFun.converterJson(user)
+    }catch(E){
+      console.log("getProfile" + E)
+      return false?.toString();
+    } 
+  }
 
   async CheckLogin(body:UserDTO): Promise<boolean>{
       try{

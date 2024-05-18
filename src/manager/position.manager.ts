@@ -2,35 +2,38 @@ import { Position } from "src/interface/Position";
 
 export class PositionManager{
     private positions: Position[] = [];
-
-
+    private index:number = 0
+    private test:boolean = false
 
     AddOrUpdatePosition(clientId:string,newPosition:Position){
         if(this.positions.length != 0){
             const index = this.getIndex(clientId,true)
-    
+            
             if(index !== -1){
                 // 사용자 정보 업데이트
                 this.positions[index] = newPosition;
             }else{
                 // 새로운 사용자            
-                this.removePosition(newPosition.userId,false)
+                this.removePosition(newPosition.userIdx,false)
                 this.positions.push(newPosition)
             }
         }else{
             this.positions.push(newPosition)
-        }
-        
+        }                
     }
 
-    getIndex(value:string,useClientId:boolean){
+    AddTestIndex(){
+        this.index = this.positions.length;
+    }
+
+    getIndex(value:any,useClientId:boolean){
         const index = this.positions.findIndex(p => 
-            useClientId ? p.clientId === value : p.userId === value
+            useClientId ? p.clientId === value : p.userIdx === value
             );
         return index
     }
 
-    removePosition(value:string,useClientId:boolean = true){
+    removePosition(value:any,useClientId:boolean = true){
         if(this.positions.length != 0){
             const index = this.getIndex(value,useClientId)
             if(index !== -1){
@@ -39,19 +42,32 @@ export class PositionManager{
         }
     }
 
-    getPosition(clientId:string,userPosition:{latitude:number,longitude:number,zoomLevel:number}){  
-       const result = this.positions.filter(p => {
+    getPosition(clientId:string,userPosition?:{latitude:number,longitude:number,zoomLevel:number}){
+        if(this.index > 2 && !this.test){
+            this.index -= 1;            
+        }else if(this.index <= 2 && !this.test){
+            this.test = true
+        }
+        else if(this.test && this.index < 38){
+            this.index += 1
+        }else if(this.index == 38){
+            this.test = false
+        }
+        console.log(this.index)
+       const result = this.positions.filter((p,index) => {
             if (p.clientId != clientId){
-                // return p;                                
-                const distance = this.calculateDistance(userPosition.latitude,userPosition.longitude,p.position.latitude,p.position.longitude)
-                const phoneMapDistance = this.zoomLevelControl(userPosition.zoomLevel)
-               if(distance <= phoneMapDistance){
-                    return p
-               } 
+                if(index <= this.index)
+                    return p;                                
+            //     const distance = this.calculateDistance(userPosition.latitude,userPosition.longitude,p.position.latitude,p.position.longitude)
+            //     const phoneMapDistance = this.zoomLevelControl(userPosition.zoomLevel)
+            //    if(distance <= phoneMapDistance){
+            //         return p
+            //    } 
             }
         })
 
         return result;
+    
     }
 
     zoomLevelControl(zoomlevel:number):number{
