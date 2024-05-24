@@ -1,4 +1,4 @@
-export interface Payload{
-    id:string
-    phone:string
+export interface Payload {
+  id: string;
+  phone: string;
 }

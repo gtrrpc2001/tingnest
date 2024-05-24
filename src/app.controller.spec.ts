@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ecg_raw_monthlyController } from './controller/ecg_raw_monthly.controller';
-import { ecg_raw_monthlyService } from './service/ecg_raw_monthly.service';
+import { UserController } from './controller/user.controller';
+import { UserService } from './service/user.service';
 
 describe('ecg_raw_monthlyController', () => {
-  let appController: ecg_raw_monthlyController;
+  let appController: UserController;
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
-      controllers: [ecg_raw_monthlyController],
-      providers: [ecg_raw_monthlyService],
+      controllers: [UserController],
+      providers: [UserService],
     }).compile();
 
-    appController = app.get<ecg_raw_monthlyController>(ecg_raw_monthlyController);
+    appController = app.get<UserController>(UserController);
   });
 
   describe('root', () => {

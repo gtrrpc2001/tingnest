@@ -1,17 +1,19 @@
 version: '3.8'
 services:
-  test:
-    image: tingproject:0.1
-    volumes:
-      - .:/app
-      - /app/node_modules
-    working_dir: /app
-    ports:
-      - "${DEFAULT}:${DEFAULT}"
-    environment:
-      - NODE_ENV=production
-      - BACKENDPORT=${DEFAULT}
-    command: pm2-runtime start ecosystem.config.js --env production
+  # test:
+  #   image: tingproject:0.1
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
+  #   working_dir: /app
+  #   ports:
+  #     - "${DEFAULT}:${DEFAULT}"
+  #   environment:
+  #     - NODE_ENV=production
+  #     - BACKENDPORT=${DEFAULT}      
+  #     # - DATABASE=${TDATABASE}
+  #     # - REDISDB=${TREDISDB}
+  #   command: pm2-runtime start ecosystem.config.js --env production
 
   deploy:
     # dockerfile build
@@ -27,6 +29,8 @@ services:
     environment:
       - NODE_ENV=development
       - BACKENDPORT=${BACKENDPORT}
+      # - DATABASE=${DATABASE}
+      # - REDISDB=${REDISDB}
     command: pm2-runtime start ecosystem.config.js --env development
     
     

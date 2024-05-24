@@ -11,40 +11,42 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class AuthService {
   constructor(
-    private jwtService:JwtService,
-    private userSerivce:UserService,
-    private configService:ConfigService
-    ){}
- 
-    async validateUser(body:UserDTO):Promise<{accessToken:string} | undefined>{
-      try{
-        let userFind = await this.userSerivce.findByFields(body.id,body.phone)
-        const validatePassword = pwBcrypt.validatePwd(body.pwd,userFind.pwd)
+    private jwtService: JwtService,
+    private userSerivce: UserService,
+    private configService: ConfigService,
+  ) {}
 
-        if(!userFind || !validatePassword){
-          throw new UnauthorizedException('Login Failed!')
-        }
+  async validateUser(
+    body: UserDTO,
+  ): Promise<{ accessToken: string } | undefined> {
+    try {
+      let userFind = await this.userSerivce.findByFields(body.id, body.phone);
+      const validatePassword = pwBcrypt.validatePwd(body.pwd, userFind.pwd);
 
-        const payload:Payload = {id:userFind.id,phone:userFind.phone}
-        return {
-          accessToken:this.jwtService.sign(payload)
-        };
-      }catch(E){
-        console.log(E)
+      if (!userFind || !validatePassword) {
+        throw new UnauthorizedException('Login Failed!');
       }
-    }
 
-    async tokenValidateUser(payload:Payload):Promise<any>{
-      try{
-         const result = await this.userSerivce.findByFields(payload.id,payload.phone)
-         return  result;
-      }catch(E){
-        console.log(E)
-      }
+      const payload: Payload = { id: userFind.id, phone: userFind.phone };
+      return {
+        accessToken: this.jwtService.sign(payload),
+      };
+    } catch (E) {
+      console.log(E);
     }
+  }
 
-    getCookieWithJwtToken(){
-      
+  async tokenValidateUser(payload: Payload): Promise<any> {
+    try {
+      const result = await this.userSerivce.findByFields(
+        payload.id,
+        payload.phone,
+      );
+      return result;
+    } catch (E) {
+      console.log(E);
     }
-    
+  }
+
+  getCookieWithJwtToken() {}
 }

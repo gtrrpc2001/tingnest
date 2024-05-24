@@ -1,43 +1,29 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
 
-export class CommentDTO {
+export class LikesDTO {
   @IsString()
   @IsOptional()
   @ApiProperty({ type: String, description: 'post 구분 값' })
   readonly kind: string;
-
-  @IsNumber()
-  @IsOptional()
-  @ApiProperty({ type: Number, description: '' })
-  readonly idx: number;
 
   @IsString()
   @IsOptional()
   @ApiProperty({ type: String, description: '' })
   readonly id: string;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  @ApiProperty({ type: String, description: '' })
-  readonly writetime: string;
-
-  @IsString()
   @ApiProperty({ type: Number, description: '' })
-  readonly postNum: number;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({ type: String, description: '' })
-  readonly aka: string;
+  readonly nbo_idx: number;
 
   @IsNumber()
   @IsOptional()
   @ApiProperty({ type: Number, description: '' })
-  readonly likes: number;
+  readonly comment_idx: number;
 
   @IsString()
   @IsOptional()
   @ApiProperty({ type: String, description: '' })
-  readonly content: string;
+  readonly writetime: string;
 }

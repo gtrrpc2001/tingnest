@@ -1,7 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, Double, Int32 } from 'typeorm';
 
-@Entity('nbo_img')
-export class NboImgEntity {
+@Entity('nbo_likes')
+export class Nbo_LikesEntity {
   @PrimaryGeneratedColumn()
   idx: number;
 
@@ -9,17 +9,14 @@ export class NboImgEntity {
   id: string;
 
   @Column({ type: 'int' })
-  nboidx: Int32;
-
-  @Column({ type: 'longblob' })
-  nboImg: Buffer;
+  nbo_idx: number;
 
   @Column({ type: 'datetime' })
   writetime: string;
 }
 
-@Entity('nbo_img_log')
-export class nboImgLogEntity {
+@Entity('comment_likes')
+export class Comment_LikesEntity {
   @PrimaryGeneratedColumn()
   idx: number;
 
@@ -27,10 +24,7 @@ export class nboImgLogEntity {
   id: string;
 
   @Column({ type: 'int' })
-  nboidx: Int32;
-
-  @Column({ type: 'longblob' })
-  nboImg: Buffer;
+  comment_idx: number;
 
   @Column({ type: 'datetime' })
   writetime: string;

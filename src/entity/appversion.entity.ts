@@ -1,14 +1,13 @@
 import { Entity, Column, PrimaryGeneratedColumn, Double, Int32 } from 'typeorm';
 
 @Entity('app_version')
-export class AppversionEntity{
+export class AppversionEntity {
+  @PrimaryGeneratedColumn()
+  idx: number;
 
-    @PrimaryGeneratedColumn()
-    idx: number;
+  @Column({ type: 'varchar' })
+  admin: string;
 
-    @Column({type:'varchar'})
-    admin:string;   
-    
-    @Column({type:'varchar'})
-    appversion:string;   
+  @Column({ type: 'varchar' })
+  appversion: string;
 }
