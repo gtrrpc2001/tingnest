@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserDTO } from '../dto/user.dto';
@@ -14,9 +14,11 @@ import { Response } from 'express';
 import { Readable } from 'stream';
 import { PositionDTO } from 'src/dto/position.dto';
 import { PositionService } from './position.service';
+import { SchedulerRegistry } from '@nestjs/schedule';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
   constructor(
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
@@ -25,6 +27,7 @@ export class UserService {
     private positionService: PositionService,
     private login_logService: Login_logService,
     private config: ConfigService,
+    private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
 
   activate = this.config.get<string>('USER_ACTIVITY_LOGIN');
@@ -37,16 +40,7 @@ export class UserService {
         return await this.Login(body);
       case 'logout':
         //to do
-        const guard = this.config.get<number>('USER_GUARD_LOGOUT');
-        const logBody: Login_logDTO = {
-          id: body.id,
-          writetime: body.writetime,
-          activity: body.activate,
-        };
-        await this.login_logService.LogInsert(logBody);
-        return await commonQuery
-          .UpdateGuard(this.userRepository, body.id, body.activate, guard)
-          ?.toString();
+        return await this.scheduleLogout(body);
       case 'signUp':
         return await this.signUp(body);
       case 'profileUpdate':
@@ -62,8 +56,46 @@ export class UserService {
         return await this.updateToken(body);
       case 'profile':
         return await this.getProfile(body.id);
+      case 'visibleUpdate':
+        return await this.updateVisible(body);
       case null:
         return false?.toString();
+    }
+  }
+
+  async scheduleLogout(body: UserDTO) {
+    try {
+      const timeoutDuration = 10 * 60 * 1000;
+      const timeout = setTimeout(async () => {
+        try {
+          const guard = this.config.get<number>('USER_GUARD_LOGOUT');
+          const logBody: Login_logDTO = {
+            id: body.id,
+            writetime: body.writetime,
+            activity: body.activate,
+          };
+          await this.login_logService.LogInsert(logBody);
+
+          this.logger.debug(
+            `user logout activity update ${body.id} :: ${body.activate}`,
+          );
+
+          return await commonQuery.UpdateGuard(
+            this.userRepository,
+            body.id,
+            body.activate,
+            guard,
+          );
+        } catch (E) {
+          this.logger.error(`user logout error ${body.id}: ${E.message}`);
+        }
+      }, timeoutDuration); // 10분 후 실행
+
+      this.schedulerRegistry.addTimeout(`${body.id}_logout`, timeout);
+      return true;
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
     }
   }
 
@@ -211,6 +243,21 @@ export class UserService {
     }
   }
 
+  async updateVisible(body: UserDTO) {
+    try {
+      const result = await this.userRepository
+        .createQueryBuilder()
+        .update(UserEntity)
+        .set({ visible: body.visible })
+        .where({ id: body.id })
+        .execute();
+      return result.affected > 0;
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
+    }
+  }
+
   async setInsert(
     repository: Repository<any>,
     entity: any,
@@ -240,6 +287,7 @@ export class UserService {
             access_token: body.access_token,
             refresh_token: body.refresh_token,
             alarm_token: body.alarm_token,
+            visible: body.visible,
           },
         ])
         .execute();
@@ -253,35 +301,17 @@ export class UserService {
     }
   }
 
-  async sendProfiles(res: Response, id: string): Promise<any> {
-    try {
-      const result: UserEntity[] = await this.userRepository
-        .createQueryBuilder('user')
-        .select('profile')
-        .where({ id: id })
-        // .where("user.id != :id",{"id":id})
-        // .where({"activate":this.activate})
-        .getRawMany();
-      console.log(result);
-      if (result.length != 0) {
-        result.map((d) => {
-          this.ResponseProfile(res, d.profile);
-        });
-      } else res.send({ msg: 0 });
-    } catch (E) {
-      res.send({ msg: E });
-    }
-  }
-
   async sendProfile(res: Response, idx: number): Promise<any> {
     try {
+      const visible = this.config.get<number>('USER_VISIBLE_SHOW');
       const result: UserEntity = await this.userRepository
         .createQueryBuilder()
         .select('profile')
         .where({ id: 'test' })
         // .where({"idx":idx})
+        // .andWhere({ activate: this.activate })
+        .andWhere({ visible: visible })
         .getRawOne();
-      // .andWhere({"activate":this.activate})
       if (result) {
         this.ResponseProfile(res, result.profile);
       } else res.send({ msg: 0 });
@@ -304,7 +334,7 @@ export class UserService {
     try {
       const result: UserEntity = await this.userRepository
         .createQueryBuilder()
-        .select('idx,id,phone,birth,gender,profile,aka')
+        .select('idx,id,phone,birth,gender,profile,aka,visible')
         .where({ id: id })
         .getRawOne();
       const profile = commonFun.getImageBase64(result.profile);
@@ -317,6 +347,7 @@ export class UserService {
         gender: result.gender,
         profile: length == 0 ? null : profile,
         aka: result.aka,
+        visible: result.visible,
       };
       return commonFun.converterJson(user);
     } catch (E) {

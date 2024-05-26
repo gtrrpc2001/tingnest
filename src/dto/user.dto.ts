@@ -92,4 +92,9 @@ export class UserDTO {
   @IsString()
   @ApiProperty({ type: String, description: 'firebase' })
   alarm_token: string;
+
+  @IsOptional()
+  @IsNumber()
+  @ApiProperty({ type: Number, description: '' })
+  visible: number;
 }

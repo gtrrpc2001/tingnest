@@ -20,6 +20,9 @@ export class NboEntity {
   @Column({ type: 'varchar' })
   vilege: string;
 
+  @Column({ type: 'varchar' })
+  title: string;
+
   @Column({ type: 'text' })
   content: string;
 
@@ -46,6 +49,9 @@ export class NboLogEntity {
 
   @Column({ type: 'varchar' })
   vilege: string;
+
+  @Column({ type: 'varchar' })
+  title: string;
 
   @Column({ type: 'text' })
   content: string;

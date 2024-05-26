@@ -14,13 +14,13 @@ export class commonQuery {
     guard: number,
   ): Promise<boolean> {
     try {
-      await userRepository
+      const result = await userRepository
         .createQueryBuilder()
         .update(UserEntity)
         .set({ guard: guard, activate: activate })
         .where({ id: id })
         .execute();
-      return true;
+      return result.affected > 0;
     } catch (E) {
       console.log('UpdateLogin : ' + E);
       return false;

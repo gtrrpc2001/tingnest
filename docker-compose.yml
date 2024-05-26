@@ -18,7 +18,7 @@ services:
   deploy:
     # dockerfile build
     # build: .
-    image: tingproject:0.1
+    image: tingproject:latest
     volumes:
       - .:/app
       - /app/node_modules

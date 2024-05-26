@@ -5,7 +5,7 @@ export class PositionManager {
   private index: number = 0;
   private test: boolean = false;
 
-  AddOrUpdatePosition(clientId: string, newPosition: Position) {
+  AddOrUpdatePosition(clientId: string, newPosition: Position){
     if (this.positions.length != 0) {
       const index = this.getIndex(clientId, true);
 

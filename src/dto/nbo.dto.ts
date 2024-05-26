@@ -41,6 +41,11 @@ export class NboDTO {
 
   @IsString()
   @IsOptional()
+  @ApiProperty({ type: String, description: '제목' })
+  readonly title: string;
+
+  @IsString()
+  @IsOptional()
   @ApiProperty({ type: String, description: '내용' })
   readonly content: string;
 

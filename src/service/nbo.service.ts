@@ -1,7 +1,7 @@
 import { NboEntity, NboLogEntity } from 'src/entity/nbo.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual, MoreThan, In } from 'typeorm';
+import { Repository, MoreThanOrEqual, MoreThan,LessThan, In } from 'typeorm';
 import { commonFun } from 'src/clsfunc/commonfunc';
 import { NboImgService } from './nboimg.service';
 import { CommentService } from './comment.service';
@@ -19,6 +19,10 @@ export class NboService {
 
   async gubunKind(body: NboDTO): Promise<any> {
     switch (body.kind) {
+      case 'nboSelect':
+        return await this.SelectNbo(body)
+      case 'myNboSelect':
+        return await this.SelectMyNbo(body);
       case 'nboInsert':
         return await this.InsertNbo(body);
       case 'nboDelete':
@@ -27,6 +31,40 @@ export class NboService {
         return await this.UpdateNbo(body);
       case null:
         return false;
+    }
+  }
+
+  async SelectNbo(body: NboDTO): Promise<NboEntity[] | { msg: string | number }> {
+    try {
+      const where = body.idx > 0 ? {idx:LessThan(body.idx)} : {1:1}
+      const result:NboEntity[] = await this.nboRepository
+        .createQueryBuilder()
+        .select('writetime,aka,likes,vilege,title,content,img')
+        .where(where)
+        .orderBy('writetime','DESC')        
+        .limit(10)
+        .getRawMany();
+
+        return result
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
+    }
+  }
+
+  async SelectMyNbo(body: NboDTO): Promise<NboEntity[] | { msg: string | number }> {
+    try {
+      const result:NboEntity[] = await this.nboRepository
+        .createQueryBuilder()
+        .select('writetime,aka,likes,vilege,title,content,img')
+        .where({ id: body.id })
+        .orderBy('writetime','DESC')
+        .getRawMany();
+
+        return result
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
     }
   }
 
@@ -40,6 +78,7 @@ export class NboService {
           id: body.id,
           aka: body.aka,
           vilege: body.vilege,
+          title: body.title,
           content: body.content,
           Img: image,
         };
@@ -48,6 +87,7 @@ export class NboService {
           id: body.id,
           aka: body.aka,
           vilege: body.vilege,
+          title: body.title,
           content: body.content,
         };
       }
@@ -126,6 +166,7 @@ export class NboService {
             id: body.id,
             aka: body.aka,
             vilege: body.vilege,
+            title: body.title,
             content: body.content,
             Img: body.Img,
           },

@@ -10,6 +10,7 @@ import { Login_logModule } from 'src/module/Login_log.module';
 import { AppversionModule } from 'src/module/appversion.module';
 import { AlarmModule } from 'src/module/alarm.module';
 import { LikesModule } from 'src/module/likes.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 export class allModule {
   static appImport = [
@@ -31,6 +32,7 @@ export class allModule {
     AppversionModule,
     AlarmModule,
     LikesModule,
+    ScheduleModule.forRoot(),
     //  ecg_csv_bpmdayModule,
     // admin_login_logModule,
     // parentsModule,app_logModule,app_bleModule
