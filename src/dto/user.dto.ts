@@ -97,4 +97,9 @@ export class UserDTO {
   @IsNumber()
   @ApiProperty({ type: Number, description: '' })
   visible: number;
+
+  @IsOptional()
+  @IsArray()
+  @ApiProperty({ type: Number, description: '' })
+  nboIdx: number[];
 }

@@ -23,7 +23,7 @@ module.exports = {
     apps : [{
       name: "Tingproject",
       script: "./dist/main.js",
-      args: "start",
+      args: "start:custom",
       instances: 1,
       autorestart: true,
       watch: false,

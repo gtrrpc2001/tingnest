@@ -1,6 +1,6 @@
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { MySqlMslConfigService } from 'src/service/mysqlconfig.service';
+import { MySqlMslConfigFactory } from 'src/factory/mysqlconfig.factory';
 import { UserModule } from 'src/module/user.module';
 import { PositionModule } from 'src/module/position.module';
 import { NboModule } from 'src/module/nbo.module';
@@ -11,6 +11,11 @@ import { AppversionModule } from 'src/module/appversion.module';
 import { AlarmModule } from 'src/module/alarm.module';
 import { LikesModule } from 'src/module/likes.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ClassesModule } from 'src/module/classes.module';
+import { Class_userModule } from 'src/module/class_user.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { ServeStaticFactory } from 'src/factory/serveStatic.factory';
 
 export class allModule {
   static appImport = [
@@ -20,9 +25,10 @@ export class allModule {
     }),
 
     TypeOrmModule.forRootAsync({
-      useClass: MySqlMslConfigService,
-      inject: [MySqlMslConfigService],
+      useClass: MySqlMslConfigFactory,
+      inject: [MySqlMslConfigFactory],
     }),
+    ServeStaticModule.forRootAsync({useClass:ServeStaticFactory}),
     UserModule,
     PositionModule,
     NboModule,
@@ -33,8 +39,7 @@ export class allModule {
     AlarmModule,
     LikesModule,
     ScheduleModule.forRoot(),
-    //  ecg_csv_bpmdayModule,
-    // admin_login_logModule,
-    // parentsModule,app_logModule,app_bleModule
+    ClassesModule,
+    Class_userModule,    
   ];
 }

@@ -7,7 +7,7 @@ export class NboDTO {
   @IsString()
   @IsOptional()
   @ApiProperty({ type: String, description: '' })
-  readonly kind: string;
+  readonly kind?: string;
 
   @IsNumber()
   @IsOptional()
@@ -41,6 +41,11 @@ export class NboDTO {
 
   @IsString()
   @IsOptional()
+  @ApiProperty({ type: String, description: '주제' })
+  readonly subject: string;
+  
+  @IsString()
+  @IsOptional()
   @ApiProperty({ type: String, description: '제목' })
   readonly title: string;
 
@@ -49,8 +54,7 @@ export class NboDTO {
   @ApiProperty({ type: String, description: '내용' })
   readonly content: string;
 
-  @IsOptional()
-  @IsArray()
+  @IsOptional()  
   @ApiProperty({ type: 'NboImgDTO', description: 'nboImgDto' })
-  readonly nboImgDto: NboImgDTO;
+  readonly nboImgDto?: NboImgDTO;
 }

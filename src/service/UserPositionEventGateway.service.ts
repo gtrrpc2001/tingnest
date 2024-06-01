@@ -20,9 +20,13 @@ import * as dayjs from 'dayjs';
 export class UserPositionEventGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor(private positionService: PositionService) {}
+  constructor(
+    private positionService: PositionService
+    ) {}
 
   private positionManager = new PositionManager();
+
+  private visible = Number(process.env.USER_VISIBLE_SHOW)
 
   @WebSocketServer() server: Server;
 
@@ -30,8 +34,9 @@ export class UserPositionEventGateway
     //사용자 id 값 , 위도 경도 값 저장  push 부분
     client.emit('join', client.id);
 
+    //테스트용이므로 나중에 주석 달기
     await this.getUserPosition();
-    this.positionManager.AddTestIndex();
+
     console.log('connect success', client.id);
   };
 
@@ -42,15 +47,18 @@ export class UserPositionEventGateway
   }
 
   @SubscribeMessage('requestUserPositionData')
-  handleUserPositionDataRequest(client: Socket, payload: { mapRect: rect[] }) {
+  handleUserPositionDataRequest(client: Socket, payload: { mapRect: rect[],visible:number }) {
     //위도 경도 바뀐 user만 값 반환
-    console.log('DataOn');
-
-    //필요한 정보 보내기
-    console.log(dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss'));
-    const result = this.positionManager.getPosition(client.id, payload);
-    client.emit('UserPositionData', result);
-
+    console.log('DataOn');    
+    //필요한 정보 보내기    
+    if(payload.visible == this.visible){
+      console.log(dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss'));
+      const result = this.positionManager.getPosition(client.id, payload);   
+      console.log(result.length)   
+      client.emit('UserPositionData', result);
+    }else{
+      client.emit('UserPositionData', []);
+    }
     console.log('DataOff');
   }
 
@@ -68,6 +76,7 @@ export class UserPositionEventGateway
   }
 
   getUserPosition = async () => {
+
     const userList = await this.positionService.GetUserPosition('test');
     if (userList) {
       userList.map((user, index) => {
@@ -79,8 +88,9 @@ export class UserPositionEventGateway
             lat: user.latitude,
             lng: user.longitude,
           },
+          visible: user.visible
         });
-      });
+      });      
     }
   };
 

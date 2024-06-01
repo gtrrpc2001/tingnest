@@ -15,6 +15,7 @@ import { Readable } from 'stream';
 import { PositionDTO } from 'src/dto/position.dto';
 import { PositionService } from './position.service';
 import { SchedulerRegistry } from '@nestjs/schedule';
+import { NboService } from './nbo.service';
 
 @Injectable()
 export class UserService {
@@ -23,11 +24,12 @@ export class UserService {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
     @InjectRepository(DelUserLogEntity)
-    private DeleteUserLogRepository: Repository<DelUserLogEntity>,
+    private DeleteUserLogRepository: Repository<DelUserLogEntity>,    
     private positionService: PositionService,
     private login_logService: Login_logService,
     private config: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
+    private nboService:NboService,
   ) {}
 
   activate = this.config.get<string>('USER_ACTIVITY_LOGIN');
@@ -59,8 +61,16 @@ export class UserService {
       case 'visibleUpdate':
         return await this.updateVisible(body);
       case null:
-        return false?.toString();
+        return { msg: null };
     }
+  }
+
+  async getQueryRunner() {
+    const queryRunner =
+      this.userRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    return queryRunner;
   }
 
   async scheduleLogout(body: UserDTO) {
@@ -113,7 +123,7 @@ export class UserService {
     }
   }
 
-  async userDelete(body: UserDTO): Promise<string> {
+  async userDelete(body: UserDTO) {
     try {
       var info = await this.getUserDelete_Info(body.id);
       if (!info) {
@@ -122,15 +132,22 @@ export class UserService {
           DelUserLogEntity,
           body,
         );
-        if (bool) {
+        
+        let nboLogInsertBool
+        for(const i of body.nboIdx){
+          nboLogInsertBool = await this.nboService.DeleteNbo(i)           
+        }
+
+
+        if (bool && nboLogInsertBool == true) {
           return await this.setDelete(body.id);
         } else {
-          return false?.toString();
+          return { msg: 0 };
         }
       }
     } catch (E) {
       console.log(E);
-      return false?.toString();
+      return { msg: E };
     }
   }
 
@@ -164,7 +181,6 @@ export class UserService {
 
   async profileUpdate(body: UserDTO): Promise<any> {
     try {
-      var boolResult = false;
       const profile = commonFun.getImageBuffer(body.profile);
       console.log(body.imgupdate);
       const result = await this.userRepository
@@ -180,9 +196,8 @@ export class UserService {
         body.id,
         body.imgupdate,
       );
-      boolResult = true;
       console.log('setProfile');
-      return boolResult?.toString();
+      return result.affected > 0 ;
     } catch (E) {
       console.log('profileUpdate' + E);
       return { msg: E };
@@ -235,8 +250,8 @@ export class UserService {
         aka: body.aka,
       };
       console.log(positionBody);
-      await this.positionService.InsertUserPosition(positionBody);
-      return result?.toString();
+      const userPositionResult = await this.positionService.InsertUserPosition(positionBody);
+      return userPositionResult;
     } catch (E) {
       console.log('signUp' + E);
       return { msg: E };
@@ -251,6 +266,7 @@ export class UserService {
         .set({ visible: body.visible })
         .where({ id: body.id })
         .execute();
+      console.log('updateVisible : ', result.affected > 0);
       return result.affected > 0;
     } catch (E) {
       console.log(E);
@@ -266,7 +282,13 @@ export class UserService {
   ): Promise<any> {
     try {
       const AESpwd = await pwBcrypt.transformPassword(body.pwd);
-      const profile = commonFun.getImageBuffer(body.profile);
+      let profile:Buffer
+      if(body.profile){
+        profile = commonFun.getImageBuffer(body.profile);
+      }else{
+        const path = this.config.get<string>('DEFAULT_PROFILE_IMAGE_PATH')        
+        profile = await commonFun.getDefault_ImageAsBuffer(path)
+      }
       const result = await repository
         .createQueryBuilder()
         .insert()
@@ -352,7 +374,7 @@ export class UserService {
       return commonFun.converterJson(user);
     } catch (E) {
       console.log('getProfile' + E);
-      return false?.toString();
+      return false;
     }
   }
 
@@ -451,40 +473,36 @@ export class UserService {
     }
   }
 
-  async updatePWD(body: UserDTO): Promise<string> {
-    try {
-      var boolResult = false;
+  async updatePWD(body: UserDTO) {
+    try {      
       const AESpwd = await pwBcrypt.transformPassword(body.pwd);
       const result = await this.userRepository
         .createQueryBuilder()
         .update(UserEntity)
         .set({ pwd: AESpwd })
         .where({ id: body.id })
-        .execute();
-      boolResult = true;
+        .execute();      
       console.log('updatePWD');
-      return boolResult?.toString();
+      return result.affected > 0 ;
     } catch (E) {
       console.log('updatePWD : ' + E);
-      return false?.toString();
+      return {msg:E};
     }
   }
 
-  async updateToken(body: UserDTO): Promise<string> {
+  async updateToken(body: UserDTO) {
     try {
-      var boolResult = false;
       const result = await this.userRepository
         .createQueryBuilder()
         .update(UserEntity)
         .set({ alarm_token: body.alarm_token })
         .where({ id: body.id })
         .execute();
-      boolResult = true;
       console.log('updateToken');
-      return boolResult?.toString();
+      return result.affected > 0 ;
     } catch (E) {
       console.log('updateToken : ' + E);
-      return false?.toString();
+      return {msg:E};
     }
   }
 

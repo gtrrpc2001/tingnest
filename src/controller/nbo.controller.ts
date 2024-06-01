@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { NboService } from 'src/service/nbo.service';
 import { NboDTO } from '../dto/nbo.dto';
@@ -13,10 +13,15 @@ export class nboController {
     return await this.nboService.gubunKind(body);
   }
 
-  @Get('/last')
-  async getLast(@Query('eq') eq: string): Promise<string> {
-    //return await this.ecg_raw_history_lastService.getEcg_raw_history_last(eq);
-    return '';
+  @Get('/nboSelect')
+  async getLast(
+    @Query('limit') limit: number,
+    @Query('id') id?: string,
+    @Query('keyword') keyword?: string,
+    @Query('idx') idx?: number,
+    @Query('search') search?: string,
+    ): Promise<any> {    
+    return await this.nboService.getSelectNboInfo(id,keyword,limit,idx,search);
   }
 
   @Get('/webTable')

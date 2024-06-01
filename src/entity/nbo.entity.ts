@@ -15,10 +15,13 @@ export class NboEntity {
   aka: string;
 
   @Column({ type: 'int' })
-  likes: Int32;
+  likes: number;
 
   @Column({ type: 'varchar' })
   vilege: string;
+
+  @Column({ type: 'varchar' })
+  subject: string;
 
   @Column({ type: 'varchar' })
   title: string;
@@ -45,10 +48,13 @@ export class NboLogEntity {
   aka: string;
 
   @Column({ type: 'int' })
-  likes: Int32;
+  likes: number;
 
   @Column({ type: 'varchar' })
   vilege: string;
+
+  @Column({ type: 'varchar' })
+  subject: string;
 
   @Column({ type: 'varchar' })
   title: string;

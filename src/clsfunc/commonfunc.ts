@@ -1,30 +1,18 @@
 import { isDefined } from 'class-validator';
+import * as fs from 'fs'
 
 export class commonFun {
   static converterJson(result: any) {
     return JSON.stringify(result);
   }
 
-  static async convertCsv(jsonFile: string) {
-    const json_array = JSON.parse(jsonFile);
-    let csv_string = '';
-    const titles = Object.keys(json_array[0]);
-
-    titles.forEach((title, index) => {
-      csv_string += index != titles.length - 1 ? `${title}|` : `${title}\n`;
-    });
-
-    json_array.forEach((content, index) => {
-      let row = '';
-
-      for (let title in content) {
-        row += row === '' ? `${content[title]}` : `|${content[title]}`;
-      }
-
-      csv_string += index !== json_array.length - 1 ? `${row}\r\n` : `${row}`;
-    });
-
-    return csv_string;
+  static async getDefault_ImageAsBuffer(filePath: string): Promise<Buffer> {
+    try {      
+      const imageBuffer = await fs.promises.readFile(filePath);
+      return imageBuffer;
+    } catch (error) {
+      console.log('파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+    }
   }
 
   static getWritetime(): string {

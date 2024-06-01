@@ -83,8 +83,8 @@ export class DelUserLogEntity {
   @Column({ type: 'datetime' })
   imgupdate: string;
 
-  @Column({ type: 'varchar' })
-  profile: string;
+  @Column({ type: 'mediumblob' })
+  profile: Buffer;
 
   @Column({ type: 'varchar' })
   aka: string;

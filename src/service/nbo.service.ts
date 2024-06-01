@@ -1,11 +1,12 @@
 import { NboEntity, NboLogEntity } from 'src/entity/nbo.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual, MoreThan,LessThan, In } from 'typeorm';
+import { Repository, MoreThanOrEqual, MoreThan, LessThan, In } from 'typeorm';
 import { commonFun } from 'src/clsfunc/commonfunc';
 import { NboImgService } from './nboimg.service';
 import { CommentService } from './comment.service';
 import { NboDTO } from 'src/dto/nbo.dto';
+import { NboInterface } from 'src/interface/nbo';
 
 @Injectable()
 export class NboService {
@@ -16,17 +17,13 @@ export class NboService {
     private nboImgService: NboImgService,
     private commentService: CommentService,
   ) {}
-
+  private select = 'idx,writetime,aka,likes,vilege,subject,title,content';
   async gubunKind(body: NboDTO): Promise<any> {
     switch (body.kind) {
-      case 'nboSelect':
-        return await this.SelectNbo(body)
-      case 'myNboSelect':
-        return await this.SelectMyNbo(body);
       case 'nboInsert':
         return await this.InsertNbo(body);
       case 'nboDelete':
-        return await this.DeleteNbo(body);
+        return await this.DeleteNbo(body.idx);
       case 'nboUpdate':
         return await this.UpdateNbo(body);
       case null:
@@ -34,38 +31,108 @@ export class NboService {
     }
   }
 
-  async SelectNbo(body: NboDTO): Promise<NboEntity[] | { msg: string | number }> {
-    try {
-      const where = body.idx > 0 ? {idx:LessThan(body.idx)} : {1:1}
-      const result:NboEntity[] = await this.nboRepository
-        .createQueryBuilder()
-        .select('writetime,aka,likes,vilege,title,content,img')
-        .where(where)
-        .orderBy('writetime','DESC')        
-        .limit(10)
-        .getRawMany();
+  async getQueryRunner() {
+    const queryRunner =
+      this.nboRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    return queryRunner;
+  }
 
-        return result
+  async getSelectNboInfo(
+    id: string,
+    keyword: string,
+    limit: number,
+    idx: number,
+    search: string,
+  ) {
+    try {
+      let result;
+      console.log(keyword);
+      if (id) {
+        result = await this.SelectMyNbo(id, limit, idx);
+      } else {
+        result = await this.SelectNbo(keyword, limit, idx, search);
+      }
+      return result;
     } catch (E) {
       console.log(E);
       return { msg: E };
     }
   }
 
-  async SelectMyNbo(body: NboDTO): Promise<NboEntity[] | { msg: string | number }> {
+  async SelectNbo(
+    keyword: string,
+    limit: number,
+    idx: number,
+    search: string,
+  ): Promise<NboEntity[]> { //modelNbo[]
     try {
-      const result:NboEntity[] = await this.nboRepository
+      const idxWhere = idx ? { idx: LessThan(idx) } : '1=1';
+      const keywordWhere = keyword ? `subject LIKE '%${keyword}%'` : '1=1';
+      const searchWhere = search ? `title LIKE '%${search}%'` : '1=1';
+      const result: NboEntity[] = await this.nboRepository
         .createQueryBuilder()
-        .select('writetime,aka,likes,vilege,title,content,img')
-        .where({ id: body.id })
-        .orderBy('writetime','DESC')
+        .select(this.select) //img
+        .where(idxWhere)
+        .andWhere(keywordWhere)
+        .andWhere(searchWhere)
+        .orderBy('writetime', 'DESC')
+        .limit(limit)
         .getRawMany();
 
-        return result
+      return result;
+
+      // const convertToResult = this.returnNboImage(result)
+      // return convertToResult;
     } catch (E) {
       console.log(E);
-      return { msg: E };
+      return [];
     }
+  }
+
+  async SelectMyNbo(
+    id: string,
+    limit: number,
+    idx: number,
+  ): Promise<NboInterface[]> {
+    try {
+      const idxWhere = idx > 0 ? { idx: LessThan(idx) } : '1=1';
+      const result: NboEntity[] = await this.nboRepository
+        .createQueryBuilder()
+        .select(this.select)
+        .where({ id: id })
+        .andWhere(idxWhere)
+        .orderBy('writetime', 'DESC')
+        .limit(limit)
+        .getRawMany();
+
+      const convertToResult = this.returnNboImage(result)
+      return convertToResult;
+    } catch (E) {
+      console.log(E);
+      return [];
+    }
+  }
+
+  returnNboImage(result: NboEntity[]) {
+    const nboList: NboInterface[] = [];
+    for (const n of result) {
+      const img = commonFun.getImageBase64(n.Img);
+      const nbo: NboInterface = {
+        idx: n.idx,
+        writetime: n.writetime,
+        aka: n.aka,
+        likes: n.likes,
+        vilege: n.vilege,
+        subject: n.subject,
+        title: n.title,
+        content: n.content,
+        img: img,
+      };
+      nboList.push(nbo);
+    }
+    return nboList;
   }
 
   async InsertNbo(body: NboDTO): Promise<boolean | { msg: string | number }> {
@@ -78,6 +145,7 @@ export class NboService {
           id: body.id,
           aka: body.aka,
           vilege: body.vilege,
+          subject: body.subject,
           title: body.title,
           content: body.content,
           Img: image,
@@ -87,6 +155,7 @@ export class NboService {
           id: body.id,
           aka: body.aka,
           vilege: body.vilege,
+          subject: body.subject,
           title: body.title,
           content: body.content,
         };
@@ -115,21 +184,21 @@ export class NboService {
     }
   }
 
-  async DeleteNbo(body: NboDTO): Promise<boolean | { msg: string | number }> {
+  async DeleteNbo(idx: number): Promise<boolean | { msg: string | number }> {
     try {
-      const LogInsertResult = await this.SelectToInsertNboLog(body.idx);
+      const LogInsertResult = await this.SelectToInsertNboLog(idx);
 
       if (LogInsertResult) {
-        const nboImgLogResult = await this.nboImgService.DeleteNboImg(body.idx);
+        const nboImgLogResult = await this.nboImgService.DeleteNboImg(idx);
         const commentLogResult = await this.commentService.CommentLogInsert(
-          body.idx,
+          idx,
         );
 
         if (nboImgLogResult && commentLogResult) {
           const result = await this.nboRepository
             .createQueryBuilder()
             .delete()
-            .where({ idx: body.idx })
+            .where({ idx: idx })
             .execute();
           return result.affected > 0;
         }

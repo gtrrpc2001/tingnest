@@ -2,13 +2,11 @@ import { Position, rect } from 'src/interface/Position';
 
 export class PositionManager {
   private positions: Position[] = [];
-  private index: number = 0;
-  private test: boolean = false;
+  private visible = Number(process.env.USER_VISIBLE_SHOW);
 
-  AddOrUpdatePosition(clientId: string, newPosition: Position){
+  AddOrUpdatePosition(clientId: string, newPosition: Position) {
     if (this.positions.length != 0) {
       const index = this.getIndex(clientId, true);
-
       if (index !== -1) {
         // 사용자 정보 업데이트
         this.positions[index] = newPosition;
@@ -20,10 +18,6 @@ export class PositionManager {
     } else {
       this.positions.push(newPosition);
     }
-  }
-
-  AddTestIndex() {
-    this.index = this.positions.length;
   }
 
   getIndex(value: any, useClientId: boolean) {
@@ -49,25 +43,9 @@ export class PositionManager {
           const check = this.checkIsPointInRectangle(
             p.position,
             userPosition.mapRect,
-          );
+            p.visible,
+          );          
           if (check) return p;
-        }
-      });
-      return result;
-    } else {
-      if (this.index > 2 && !this.test) {
-        this.index -= 1;
-      } else if (this.index <= 2 && !this.test) {
-        this.test = true;
-      } else if (this.test && this.index < 38) {
-        this.index += 1;
-      } else if (this.index == 38) {
-        this.test = false;
-      }
-      console.log(this.index);
-      const result = this.positions.filter((p, index) => {
-        if (p.clientId != clientId) {
-          if (index <= this.index) return p;
         }
       });
       return result;
@@ -115,7 +93,11 @@ export class PositionManager {
     return Math.floor(maxDistance);
   }
 
-  checkIsPointInRectangle(userPoint: rect, rectanglePoints: rect[]): boolean {
+  checkIsPointInRectangle(
+    userPoint: rect,
+    rectanglePoints: rect[],
+    visible: number,
+  ): boolean {
     const lats = rectanglePoints.map((point) => point.lat);
     const lons = rectanglePoints.map((point) => point.lng);
 
@@ -123,12 +105,13 @@ export class PositionManager {
     const maxLat = Math.max(...lats);
     const minLon = Math.min(...lons);
     const maxLon = Math.max(...lons);
-
+    
     return (
       userPoint.lat >= minLat &&
       userPoint.lat <= maxLat &&
       userPoint.lng >= minLon &&
-      userPoint.lng <= maxLon
+      userPoint.lng <= maxLon &&
+      visible == this.visible
     );
   }
 }

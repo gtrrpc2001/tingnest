@@ -127,7 +127,7 @@ export class PositionService {
     try {
       const result: UserPositionEntity[] = await this.userPositionRepository
         .createQueryBuilder('position')
-        .select('useridx,aka,latitude,longitude')
+        .select('useridx,aka,latitude,longitude,visible')
         .where('position.id != :id', { id: id })
         .getRawMany();
       console.log(result?.length);

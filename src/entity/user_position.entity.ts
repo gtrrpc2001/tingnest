@@ -30,6 +30,9 @@ export class UserPositionEntity {
 
   @Column({ type: 'varchar' })
   aka: string;
+
+  @Column({ type: 'tinyint' })
+  visible: number;
 }
 
 @Entity('position')

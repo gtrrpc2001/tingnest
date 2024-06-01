@@ -21,5 +21,6 @@ import { NboImgService } from 'src/service/nboimg.service';
   ],
   controllers: [nboController],
   providers: [NboService, NboImgService, CommentService],
+  exports: [NboService]
 })
 export class NboModule {}
