@@ -7,7 +7,7 @@ export class NboImgDTO {
   @ApiProperty({ type: String, description: 'post 구분 값' })
   readonly kind: string;
 
-  @IsNumber()
+  @IsArray()
   @IsOptional()
   @ApiProperty({ type: Number, description: '고유 값' })
   readonly idx: number[];

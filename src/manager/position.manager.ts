@@ -44,10 +44,11 @@ export class PositionManager {
             p.position,
             userPosition.mapRect,
             p.visible,
-          );          
+          );
           if (check) return p;
         }
       });
+      console.log(result.length, this.positions.length);
       return result;
     }
   }
@@ -105,7 +106,6 @@ export class PositionManager {
     const maxLat = Math.max(...lats);
     const minLon = Math.min(...lons);
     const maxLon = Math.max(...lons);
-    
     return (
       userPoint.lat >= minLat &&
       userPoint.lat <= maxLat &&

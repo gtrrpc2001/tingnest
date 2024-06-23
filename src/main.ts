@@ -25,7 +25,14 @@ async function bootstrap() {
   );
 
   app.use(express.json({ limit: '100mb' }));
-  app.use(express.urlencoded({ limit: '100mb' }));
+  app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+  app.use((req, res, next) => {
+    res.setTimeout(2 * 60 * 1000, () => {
+      res.status(408).send('Request timed out');
+    });
+    next();
+  });
 
   const config = new DocumentBuilder()
     .setTitle('ting')

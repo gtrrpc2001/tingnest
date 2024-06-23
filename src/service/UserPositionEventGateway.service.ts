@@ -50,13 +50,13 @@ export class UserPositionEventGateway
   handleUserPositionDataRequest(client: Socket, payload: { mapRect: rect[],visible:number }) {
     //위도 경도 바뀐 user만 값 반환
     console.log('DataOn');    
-    //필요한 정보 보내기    
+    //필요한 정보 보내기        
     if(payload.visible == this.visible){
       console.log(dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss'));
-      const result = this.positionManager.getPosition(client.id, payload);   
-      console.log(result.length)   
+      const result = this.positionManager.getPosition(client.id, payload);         
+      console.log(result.length);
       client.emit('UserPositionData', result);
-    }else{
+    }else{            
       client.emit('UserPositionData', []);
     }
     console.log('DataOff');
@@ -76,10 +76,9 @@ export class UserPositionEventGateway
   }
 
   getUserPosition = async () => {
-
     const userList = await this.positionService.GetUserPosition('test');
-    if (userList) {
-      userList.map((user, index) => {
+    if (userList) {      
+      userList.map((user, index) => {        
         this.positionManager.AddOrUpdatePosition(index, {
           clientId: index,
           aka: user.aka,
@@ -109,7 +108,7 @@ export class UserPositionEventGateway
       useridx: body.userIdx,
       latitude: body.position.lat,
       longitude: body.position.lng,
-      aka: body.aka,
+      aka: body.aka,      
     };
     return model;
   };

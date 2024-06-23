@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsString, IsArray } from 'class-validator';
-import { Double, Int32 } from 'typeorm';
 
 export class UserDTO {
   @IsOptional()
@@ -10,7 +9,7 @@ export class UserDTO {
 
   @IsOptional()
   @IsNumber()
-  @ApiProperty({ type: 'number', description: '' })
+  @ApiProperty({ type: Number, description: '' })
   readonly idx: number;
 
   @IsOptional()

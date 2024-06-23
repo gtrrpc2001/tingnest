@@ -12,5 +12,32 @@ export class Class_userEntity {
   class_idx: number;
 
   @Column({ type: 'datetime' })
-  writetime: string;
+  joined_at: string;
+
+  @Column({ type: 'tinyint' })
+  status: number;
+
+  @Column({ type: 'tinyint' })
+  role: number;
+}
+
+@Entity('class_user_log')
+export class Class_userLogEntity {
+  @PrimaryGeneratedColumn()
+  idx: number;
+
+  @Column({ type: 'varchar' })
+  id: string;
+
+  @Column({ type: 'int' })
+  class_idx: number;
+
+  @Column({ type: 'datetime' })
+  joined_at: string;
+
+  @Column({ type: 'tinyint' })
+  status: number;
+
+  @Column({ type: 'tinyint' })
+  role: number;
 }

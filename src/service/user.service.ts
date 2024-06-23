@@ -11,7 +11,6 @@ import { Login_logDTO } from 'src/dto/Login_log.dto';
 import { ConfigService } from '@nestjs/config';
 import { commonQuery } from 'src/clsfunc/commonQuery';
 import { Response } from 'express';
-import { Readable } from 'stream';
 import { PositionDTO } from 'src/dto/position.dto';
 import { PositionService } from './position.service';
 import { SchedulerRegistry } from '@nestjs/schedule';
@@ -24,14 +23,15 @@ export class UserService {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
     @InjectRepository(DelUserLogEntity)
-    private DeleteUserLogRepository: Repository<DelUserLogEntity>,    
+    private DeleteUserLogRepository: Repository<DelUserLogEntity>,
     private positionService: PositionService,
     private login_logService: Login_logService,
     private config: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
-    private nboService:NboService,
+    private nboService: NboService,
   ) {}
 
+  path = this.config.get<string>('DEFAULT_PROFILE_IMAGE_PATH');
   activate = this.config.get<string>('USER_ACTIVITY_LOGIN');
 
   async gubunKind(body: UserDTO): Promise<any> {
@@ -58,19 +58,9 @@ export class UserService {
         return await this.updateToken(body);
       case 'profile':
         return await this.getProfile(body.id);
-      case 'visibleUpdate':
-        return await this.updateVisible(body);
       case null:
         return { msg: null };
     }
-  }
-
-  async getQueryRunner() {
-    const queryRunner =
-      this.userRepository.manager.connection.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    return queryRunner;
   }
 
   async scheduleLogout(body: UserDTO) {
@@ -132,12 +122,11 @@ export class UserService {
           DelUserLogEntity,
           body,
         );
-        
-        let nboLogInsertBool
-        for(const i of body.nboIdx){
-          nboLogInsertBool = await this.nboService.DeleteNbo(i)           
-        }
 
+        let nboLogInsertBool;
+        for (const i of body.nboIdx) {
+          nboLogInsertBool = await this.nboService.DeleteNbo(i);
+        }
 
         if (bool && nboLogInsertBool == true) {
           return await this.setDelete(body.id);
@@ -197,7 +186,7 @@ export class UserService {
         body.imgupdate,
       );
       console.log('setProfile');
-      return result.affected > 0 ;
+      return result.affected > 0;
     } catch (E) {
       console.log('profileUpdate' + E);
       return { msg: E };
@@ -248,28 +237,14 @@ export class UserService {
         longitude: 0,
         address: null,
         aka: body.aka,
+        visible:body.visible
       };
       console.log(positionBody);
-      const userPositionResult = await this.positionService.InsertUserPosition(positionBody);
+      const userPositionResult =
+        await this.positionService.InsertUserPosition(positionBody);
       return userPositionResult;
     } catch (E) {
       console.log('signUp' + E);
-      return { msg: E };
-    }
-  }
-
-  async updateVisible(body: UserDTO) {
-    try {
-      const result = await this.userRepository
-        .createQueryBuilder()
-        .update(UserEntity)
-        .set({ visible: body.visible })
-        .where({ id: body.id })
-        .execute();
-      console.log('updateVisible : ', result.affected > 0);
-      return result.affected > 0;
-    } catch (E) {
-      console.log(E);
       return { msg: E };
     }
   }
@@ -282,12 +257,11 @@ export class UserService {
   ): Promise<any> {
     try {
       const AESpwd = await pwBcrypt.transformPassword(body.pwd);
-      let profile:Buffer
-      if(body.profile){
+      let profile: Buffer;
+      if (body.profile) {
         profile = commonFun.getImageBuffer(body.profile);
-      }else{
-        const path = this.config.get<string>('DEFAULT_PROFILE_IMAGE_PATH')        
-        profile = await commonFun.getDefault_ImageAsBuffer(path)
+      } else {
+        profile = null;
       }
       const result = await repository
         .createQueryBuilder()
@@ -332,44 +306,46 @@ export class UserService {
         .where({ id: 'test' })
         // .where({"idx":idx})
         // .andWhere({ activate: this.activate })
-        .andWhere({ visible: visible })
         .getRawOne();
-      if (result) {
-        this.ResponseProfile(res, result.profile);
-      } else res.send({ msg: 0 });
+      if (result.profile) {
+        commonFun.ResponseImage(res, result.profile);
+      } else {
+        const default_profileImage = await commonFun.getDefault_ImageAsBuffer(
+          this.path,
+        );
+        commonFun.ResponseImage(res, default_profileImage);
+      }
     } catch (E) {
       res.send({ msg: E });
     }
-  }
-
-  ResponseProfile = (res: Response, profile: Buffer) => {
-    const readableStream = new Readable({
-      read() {
-        this.push(profile);
-        this.push(null);
-      },
-    });
-    readableStream.pipe(res);
-  };
+  }  
 
   async getProfile(id: string): Promise<any> {
     try {
       const result: UserEntity = await this.userRepository
         .createQueryBuilder()
-        .select('idx,id,phone,birth,gender,profile,aka,visible')
+        .select('idx,id,phone,birth,gender,profile,aka')
         .where({ id: id })
         .getRawOne();
-      const profile = commonFun.getImageBase64(result.profile);
-      const length = result.profile?.length;
+
+      let profile: string;
+      if (result.profile) {
+        profile = commonFun.getImageBase64(result.profile);
+      } else {
+        profile = await commonFun.getDefault_ImageAsBase64(this.path);
+      }
+      const visible = await this.positionService.getUserPositionVisible(
+        result.id,
+      );
       const user = {
         idx: result.idx,
         id: id,
         phone: result.phone,
         birth: result.birth,
         gender: result.gender,
-        profile: length == 0 ? null : profile,
+        profile: profile,
         aka: result.aka,
-        visible: result.visible,
+        visible: visible,
       };
       return commonFun.converterJson(user);
     } catch (E) {
@@ -474,19 +450,19 @@ export class UserService {
   }
 
   async updatePWD(body: UserDTO) {
-    try {      
+    try {
       const AESpwd = await pwBcrypt.transformPassword(body.pwd);
       const result = await this.userRepository
         .createQueryBuilder()
         .update(UserEntity)
         .set({ pwd: AESpwd })
         .where({ id: body.id })
-        .execute();      
+        .execute();
       console.log('updatePWD');
-      return result.affected > 0 ;
+      return result.affected > 0;
     } catch (E) {
       console.log('updatePWD : ' + E);
-      return {msg:E};
+      return { msg: E };
     }
   }
 
@@ -499,10 +475,10 @@ export class UserService {
         .where({ id: body.id })
         .execute();
       console.log('updateToken');
-      return result.affected > 0 ;
+      return result.affected > 0;
     } catch (E) {
       console.log('updateToken : ' + E);
-      return {msg:E};
+      return { msg: E };
     }
   }
 

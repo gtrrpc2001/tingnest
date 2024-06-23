@@ -1,7 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
 import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
-import { Double, Int32 } from 'typeorm';
 
 export class PositionDTO {
   @IsNumber()
@@ -42,4 +40,9 @@ export class PositionDTO {
   @IsOptional()
   @ApiProperty({ type: String, description: '' })
   readonly aka: string;
+
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ type: Number, description: '' })
+  readonly visible?: number;
 }

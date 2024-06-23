@@ -123,6 +123,36 @@ export class PositionService {
     }
   }
 
+  async getUserPositionVisible(id: string): Promise<number> {
+    try {
+      const result: UserPositionEntity = await this.userPositionRepository
+        .createQueryBuilder()
+        .select('visible')
+        .where({ id: id })
+        .getRawOne();
+      return result.visible;
+    } catch (E) {
+      console.log(E);
+      return 0;
+    }
+  }
+
+  async updateVisible(body:PositionDTO) {
+    try {      
+      const result = await this.userPositionRepository
+        .createQueryBuilder()
+        .update(UserPositionEntity)
+        .set({ visible: body.visible })
+        .where({ id: body.id })
+        .execute();
+      console.log('updateVisible : ', result.affected > 0);
+      return result.affected > 0;
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
+    }
+  }
+
   async GetUserPosition(id: string): Promise<any> {
     try {
       const result: UserPositionEntity[] = await this.userPositionRepository
@@ -130,7 +160,6 @@ export class PositionService {
         .select('useridx,aka,latitude,longitude,visible')
         .where('position.id != :id', { id: id })
         .getRawMany();
-      console.log(result?.length);
       return result;
     } catch (E) {
       console.log(E);

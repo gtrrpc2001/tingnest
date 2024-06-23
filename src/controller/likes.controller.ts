@@ -9,7 +9,7 @@ export class LikesController {
   constructor(private likesService: LikesService) {}
 
   @Post('/api_getdata')
-  async postAll(@Body() body: LikesDTO): Promise<boolean> {
+  async postAll(@Body() body: LikesDTO) {
     return await this.likesService.gubunKind(body);
   }
 }

@@ -28,7 +28,7 @@ export class UserController {
   @Get('/test')
   async test() {    
     const path = this.config.get<string>('DEFAULT_PROFILE_IMAGE_PATH')
-    const profile = await commonFun.getDefault_ImageAsBuffer(path)
+    const profile = await commonFun.getDefault_ImageAsBase64(path)
     return profile
   }
   

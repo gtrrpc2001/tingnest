@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
-import { Double, Int32 } from 'typeorm';
 import { NboImgDTO } from './nboimg.dto';
 
 export class NboDTO {
@@ -23,6 +22,11 @@ export class NboDTO {
   @IsOptional()
   @ApiProperty({ type: String, description: '' })
   readonly writetime: string;
+
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ type: Number, description: '' })
+  readonly useridx: number;
 
   @IsString()
   @IsOptional()
@@ -53,6 +57,21 @@ export class NboDTO {
   @IsOptional()
   @ApiProperty({ type: String, description: '내용' })
   readonly content: string;
+
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ type: Number, description: 'boolean' })
+  readonly isImg: number;
+
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ type: Number, description: '조회수' })
+  readonly views: number;
+
+  @IsOptional()
+  @IsArray()
+  @ApiProperty({ type: Number, description: '' })
+  readonly nboImg: number[][];
 
   @IsOptional()  
   @ApiProperty({ type: 'NboImgDTO', description: 'nboImgDto' })

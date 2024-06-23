@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PositionController } from 'src/controller/position.controller';
 import {
   PositionEntity,
   UserPositionEntity,
@@ -10,7 +11,7 @@ import { UserPositionEventGateway } from 'src/service/UserPositionEventGateway.s
 @Module({
   imports: [TypeOrmModule.forFeature([PositionEntity, UserPositionEntity])],
   exports: [PositionService],
-  controllers: [],
+  controllers: [PositionController],
   providers: [PositionService, UserPositionEventGateway],
 })
 export class PositionModule {}

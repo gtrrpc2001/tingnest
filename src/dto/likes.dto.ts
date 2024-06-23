@@ -22,6 +22,11 @@ export class LikesDTO {
   @ApiProperty({ type: Number, description: '' })
   readonly comment_idx: number;
 
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ type: Number, description: '' })
+  readonly cmtCmt_idx: number;
+
   @IsString()
   @IsOptional()
   @ApiProperty({ type: String, description: '' })

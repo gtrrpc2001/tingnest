@@ -4,7 +4,8 @@ import { Repository } from 'typeorm';
 import { NboImgEntity, nboImgLogEntity } from 'src/entity/nboImg.entity';
 import { NboImgDTO } from 'src/dto/nboimg.dto';
 import { commonFun } from 'src/clsfunc/commonfunc';
-import { NboDTO } from 'src/dto/nbo.dto';
+import { Response } from 'express';
+import * as dayjs from 'dayjs';
 
 @Injectable()
 export class NboImgService {
@@ -15,89 +16,89 @@ export class NboImgService {
     private nboImgLogRepository: Repository<nboImgLogEntity>,
   ) {}
 
-  async InsertImg(body: NboImgDTO, idx: number): Promise<boolean> {
-    const queryRunner = await this.getQueryRunner();
+  async InsertImg(
+    nboImg: number[][],
+    id: string,
+    idx: number,
+  ): Promise<boolean> {
+    let result = true;
     try {
-      for (const value of body.nboImg) {
+      for (const value of nboImg) {
         const img = commonFun.getImageBuffer(value);
-        await queryRunner.manager
+
+        const insert = await this.nboImgLogRepository
           .createQueryBuilder()
           .insert()
           .into(NboImgEntity)
           .values([
             {
-              id: body.id,
+              id: id,
               nboidx: idx,
               nboImg: img,
             },
           ])
           .execute();
+
+        if (insert.identifiers.length < 1) {
+          throw new Error('Insert failed');
+        }
       }
-      await queryRunner.commitTransaction();
-      console.log('InsertImg');
-      return true;
+      return result;
     } catch (E) {
-      await queryRunner.rollbackTransaction();
       console.log('InsertImg : ' + E);
       return false;
-    } finally {
-      await queryRunner.release();
     }
   }
 
-  async UpdateImg(body: NboImgDTO): Promise<boolean> {
-    const queryRunner = await this.getQueryRunner();
+  async UpdateImg(
+    body: NboImgDTO,
+    nboidx: number,
+    isImg: number,
+  ): Promise<boolean> {
     try {
-      let isSuccess = true;
-      for (const [index, value] of body.nboImg.entries()) {
-        const imageLogData = await this.getImage(body.idx[index]);
-        const imageLogInsertResult = await this.InsertImgLog(
-          imageLogData,
-          body.nboidx,
-        );
-
-        if (imageLogInsertResult) {
-          const img = commonFun.getImageBuffer(value);
-          const result = await queryRunner.manager
-            .createQueryBuilder()
-            .update(NboImgEntity)
-            .set({ nboImg: img, writetime: body.writetime })
-            .where({ idx: body.idx[index] })
-            .execute();
-
-          if (result.affected === 0) {
-            isSuccess = false;
+      let isSuccess = true;      
+      if (isImg) {
+        for (const idx of body.idx) {          
+          isSuccess = await this.updateImages(idx,nboidx,null)
+          if(!isSuccess){
             break;
           }
-        } else {
-          isSuccess = false;
-          break;
+        }
+      } else {
+        for (const [index, value] of body.nboImg.entries()) {          
+          isSuccess = await this.updateImages(body.idx[index],nboidx,value)
+          if(!isSuccess){
+            break;
+          }
         }
       }
-
-      if (isSuccess) {
-        await queryRunner.commitTransaction();
-      } else {
-        await queryRunner.rollbackTransaction();
-      }
-
       console.log('UpdateImg');
       return isSuccess;
     } catch (E) {
       console.log(E);
-      await queryRunner.rollbackTransaction();
       return false;
-    } finally {
-      await queryRunner.release();
     }
   }
 
-  async getQueryRunner() {
-    const queryRunner =
-      this.nboImgRepository.manager.connection.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    return queryRunner;
+  async updateImages(idx: number, nboidx: number,value?:number[]) {
+    const imageLogData = await this.getImage(idx);
+    const imageLogInsertResult = await this.InsertImgLog(imageLogData, nboidx);
+
+    if (imageLogInsertResult) {
+      const writetime = dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss');
+      const img = value ? commonFun.getImageBuffer(value) : value
+      const result = await this.nboImgRepository
+        .createQueryBuilder()
+        .update(NboImgEntity)
+        .set({ nboImg: img, writetime: writetime })
+        .where({ idx: idx })
+        .execute();
+
+      if (result.affected > 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async getImages(nboidx: number): Promise<NboImgEntity[]> {
@@ -142,6 +143,74 @@ export class NboImgService {
     }
   }
 
+  async selectFirstImg(nboidx: number): Promise<Buffer> {
+    try {
+      const result: NboImgEntity = await this.nboImgRepository
+        .createQueryBuilder()
+        .select('idx,nboImg')
+        .where({ nboidx: nboidx })
+        .orderBy('idx', 'ASC')
+        .getRawOne();
+
+      console.log('selectFirstImg');
+      if (result) {
+        return result.nboImg;
+      } else {
+        return null;
+      }
+    } catch (E) {
+      console.log('selectFirstImg : ' + E);
+      return null;
+    }
+  }
+
+  async sendFirstImg(res: Response, nboidx: number) {
+    try {
+      const result: NboImgEntity = await this.nboImgRepository
+        .createQueryBuilder()
+        .select('idx,nboImg')
+        .where({ nboidx: nboidx })
+        .orderBy('idx', 'ASC')
+        .getRawOne();
+      if (result.nboImg) {
+        commonFun.ResponseImage(res, result.nboImg);
+      }
+    } catch (E) {
+      res.send({ msg: E });
+    }
+  }
+
+  async sendImg(res: Response, idx: number) {
+    try {
+      const result: NboImgEntity = await this.nboImgRepository
+        .createQueryBuilder()
+        .select('nboImg')
+        .where({ idx: idx })
+        .getRawOne();
+      if (result.nboImg) {
+        commonFun.ResponseImage(res, result.nboImg);
+      }
+    } catch (E) {
+      res.send({ msg: E });
+    }
+  }
+
+  async imgIdxArr(nboidx: number): Promise<number[]> {
+    try {
+      const result: NboImgEntity[] = await this.nboImgRepository
+        .createQueryBuilder()
+        .select('idx')
+        .where({ nboidx: nboidx })
+        .orderBy('idx', 'ASC')
+        .getRawMany();
+      const idxArr = result.length != 0 ? result.map((i) => i.idx) : [];
+      return idxArr;
+    } catch (E) {
+      console.log(E);
+      return [];
+    }
+  }
+
   async DeleteNboImg(nboidx: number): Promise<boolean> {
     try {
       const nboImges = await this.selectImg(nboidx);
@@ -150,9 +219,28 @@ export class NboImgService {
         const result = await this.InsertImgLog(i, nboidx);
         results.push(result);
       }
-      return results.every((result) => result === true);
+      if (results.every((result) => result === true)) {
+        const result = await this.delete(nboidx);
+        return result;
+      } else {
+        return false;
+      }
     } catch (E) {
       console.log('DeleteNboImg : ' + E);
+      return false;
+    }
+  }
+
+  async delete(nboidx: number): Promise<boolean> {
+    try {
+      const result = await this.nboImgRepository
+        .createQueryBuilder()
+        .delete()
+        .where({ nboidx: nboidx })
+        .execute();
+      return result.affected > 0;
+    } catch (E) {
+      console.log('delete : ' + E);
       return false;
     }
   }

@@ -1,74 +1,54 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CommentEntity, CommentLogEntity } from 'src/entity/comment.entity';
-import { CommentDTO } from 'src/dto/comment.dto';
+import { Cmt_cmtEntity, CommentEntity } from 'src/entity/comment.entity';
+import { CmtDTO, CommentDTO } from 'src/dto/comment.dto';
+import { CommentImgService } from './commentimg.service';
+import { ConfigService } from '@nestjs/config';
+import * as dayjs from 'dayjs';
 
 @Injectable()
 export class CommentService {
   constructor(
     @InjectRepository(CommentEntity)
     private commentRepository: Repository<CommentEntity>,
-    @InjectRepository(CommentLogEntity)
-    private commentLogRepository: Repository<CommentLogEntity>,
+    @InjectRepository(Cmt_cmtEntity)
+    private cmt_cmtRepository: Repository<Cmt_cmtEntity>,
+    private commentImgService: CommentImgService,
+    private config: ConfigService,
   ) {}
 
-  async gubunKind(body: CommentDTO): Promise<any> {
-    switch (body.kind) {
-      case 'commentInsert':
-        return await this.CommentInsert(body);
-      case 'commentUpdate':
-        return await this.CommentUpdate(body);
-      case null:
-        return { msg: 0 };
-    }
-  }
+  use: number = this.config.get<number>('USE');
+  pause: number = this.config.get<number>('PAUSE');
 
-  async CommentInsert(body: CommentDTO): Promise<boolean | { msg: string }> {
+  async CommentInsert(body: CommentDTO) {
     try {
+      const value = {
+        id: body.id,
+        useridx: body.useridx,
+        postNum: body.postNum,
+        aka: body.aka,
+        content: body.content,
+        isImg: Number(body.img ? this.use : this.pause),
+      };
       const result = await this.commentRepository
         .createQueryBuilder()
         .insert()
         .into(CommentEntity)
-        .values([
-          {
-            id: body.id,
-            postNum: body.postNum,
-            aka: body.aka,
-            content: body.content,
-          },
-        ])
+        .values([value])
         .execute();
+      let values
+      if (body.img && result.identifiers.length > 0) {
+         values = await this.getCmtcmtOrCommentInsertWithImage(
+          result,
+          value,
+          body,
+        );        
+      } else if (result.identifiers.length > 0) {
+        values = await this.getCmtcmtOrCommentInsertWithoutImage(result, value);
+      }
       console.log('CommentInsert');
-      return result.identifiers.length > 0;
-    } catch (E) {
-      console.log(E);
-      return { msg: E };
-    }
-  }
-
-  async CommentLogInsert(postNum: number): Promise<boolean> {
-    try {
-      const commentArr = await this.getComment(postNum);
-      let result;
-      commentArr.forEach(async (c) => {
-        result = await this.commentLogRepository
-          .createQueryBuilder()
-          .insert()
-          .into(CommentLogEntity)
-          .values([
-            {
-              id: c.id,
-              postNum: c.postNum,
-              aka: c.aka,
-              likes: c.likes,
-              content: c.content,
-            },
-          ])
-          .execute();
-      });
-      console.log('CommentLogInsert');
-      return result.identifiers.length > 0;
+      return values;      
     } catch (E) {
       console.log(E);
       return false;
@@ -81,10 +61,27 @@ export class CommentService {
         .createQueryBuilder()
         .select('*')
         .where({ postNum: postNum })
+        .andWhere({ pause: this.use })
         .getRawMany();
       return result;
     } catch (E) {
       console.log(E);
+    }
+  }
+
+  async getComments(commentNums: number): Promise<CmtDTO[]> {
+    try {
+      const result = await this.cmt_cmtRepository
+        .createQueryBuilder()
+        .select('*')
+        .where({ commentNum: commentNums })
+        .andWhere({ pause: this.use })
+        .getRawMany();
+      console.log('getComments');
+      return result;
+    } catch (E) {
+      console.log(E);
+      return [];
     }
   }
 
@@ -99,6 +96,10 @@ export class CommentService {
         })
         .where({ idx: body.idx })
         .execute();
+      if (body.img) {
+        const imgResult = await this.commentImgService.UpdateCommentImg(body);
+        return imgResult;
+      }
       return result.affected > 0;
     } catch (E) {
       console.log(E);
@@ -106,149 +107,225 @@ export class CommentService {
     }
   }
 
-  //    async onlyArrCount(empid:string,startDate:string,endDate:string): Promise<string>{
-  //     try{
-  //       const result = await this.ecg_csv_ecgdata_arrRepository.createQueryBuilder('ecg_csv_ecgdata_arr')
-  //                               .select('count(eq) as arrCnt')
-  //                               .where({"eq":empid})
-  //                               .andWhere({"writetime":MoreThan(startDate)})
-  //                               .andWhere({"writetime":LessThan(endDate)})
-  //                               .getRawOne()
-  //         console.log(result)
-  //         let Value = (result.length != 0 && empid != null)? commonFun.converterJson(result) : commonFun.converterJson('result = ' + '0')
-  //         return Value;
-  //     }catch(E){
-  //       console.log(E)
-  //       return commonFun.converterJson('result = ' + '0');
-  //     }
-  //    }
+  async UpdateCmtcmt(body: CmtDTO): Promise<boolean | { msg: string }> {
+    try {
+      const result = await this.cmt_cmtRepository
+        .createQueryBuilder()
+        .update(Cmt_cmtEntity)
+        .set({
+          content: body.content,
+          writetime: body.writetime,
+        })
+        .where({ idx: body.idx })
+        .execute();
+      if (body.img) {
+        const imgResult = await this.commentImgService.UpdateCmt_cmtImg(body);
+        return imgResult;
+      }
+      return result.affected > 0;
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
+    }
+  }
 
-  //    async countArr (empid:string,startDate:string,endDate:string): Promise<string>{
-  //     try{
-  //       let Value = await this.onlyArrCount(empid,startDate,endDate)
-  //       const info = await commonQuery.getProfile(this.userRepository,parentsEntity,empid,true)
-  //       if(!Value.includes('result') && !info.includes('result')){
-  //        const arr = Value?.replaceAll('{','')
-  //        const profile = info?.replaceAll('}',',')
-  //        console.log(profile)
-  //        Value =  profile + arr
-  //       }
-  //       console.log(Value)
-  //       return Value;
-  //       //return Value
-  //     } catch(E){
-  //         console.log(E)
-  //     }
+  async CommentDelete(commentidx: number): Promise<boolean> {
+    try {
+      const result = await this.commentRepository
+        .createQueryBuilder()
+        .update(CommentEntity)
+        .set({ pause: this.pause })
+        .where({ idx: commentidx })
+        .execute();
+      if (result.affected > 0) {
+        const deleteResult = await this.DeleteCmt_cmtFromComment(commentidx);
+        return deleteResult;
+      }
+      return false;
+    } catch (E) {
+      console.log(E);
+      return false;
+    }
+  }
 
-  //  }
+  async DeleteCommentFromNbo(nboidx: number): Promise<boolean> {
+    try {
+      const result = await this.commentRepository
+        .createQueryBuilder()
+        .update(CommentEntity)
+        .set({ pause: this.pause })
+        .where({ postNum: nboidx })
+        .execute();
+      if (result.affected > 0) {
+        const deleteResult = await this.DeleteCmt_cmtFromNbo(nboidx);
+        return deleteResult;
+      }
+      return false;
+    } catch (E) {
+      console.log(E);
+      return false;
+    }
+  }
 
-  //  async graphArrCount (empid:string,startDate:string,endDate:string,len:number):Promise<string>{
-  //   try{
-  //       const startLen = commonFun.getStartLen(len)
-  //       console.log(`${startLen} -- ${len}`)
-  //       const result = await this.ecg_csv_ecgdata_arrRepository.createQueryBuilder('ecg_csv_ecgdata_arr')
-  //                       .select(`MID(writetime,${startLen},2) writetime,COUNT(ecgpacket) count`)
-  //                       .where({"eq":empid})
-  //                       .andWhere({"writetime":MoreThan(startDate)})
-  //                       .andWhere({"writetime":LessThan(endDate)})
-  //                       .groupBy(`MID(writetime,${startLen},2)`)
-  //                       .having('COUNT(ecgpacket)')
-  //                       .orderBy('writetime','ASC')
-  //                       .getRawMany()
-  //       const Value = (result.length != 0 && empid != null)? commonFun.converterJson(result) : commonFun.converterJson('result = ' + '0')
-  //       return Value
-  //   }catch(E){
-  //     console.log(E)
-  //   }
-  //  }
+  async DeleteCmt_cmt(body: CmtDTO) {
+    try {
+      const result = await this.cmt_cmtRepository
+        .createQueryBuilder()
+        .update(Cmt_cmtEntity)
+        .set({ pause: this.pause })
+        .where({ idx: body.idx })
+        .execute();
+      if (result.affected > 0) {
+        const deleteResult = await this.DeleteCmt_cmtFromComment(body.idx);
+        return deleteResult;
+      }
+      return { msg: 0 };
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
+    }
+  }
 
-  //  async arrWritetime (empid:string,startDate:string,endDate:string): Promise<string>{
-  //   try{
-  //     let result
-  //     if(endDate != ''){
-  //       result = await this.ecg_csv_ecgdata_arrRepository.createQueryBuilder('ecg_csv_ecgdata_arr')
-  //                           .select('writetime,address')
-  //                           .where({"eq":empid})
-  //                           .andWhere({"writetime":MoreThan(startDate)})
-  //                           .andWhere({"writetime":LessThan(endDate)})
-  //                           .getRawMany()
-  //     }else{
-  //       result = await this.ecg_csv_ecgdata_arrRepository.createQueryBuilder()
-  //                           .select('ecgpacket')
-  //                           .where({"eq":empid})
-  //                           .andWhere({"writetime":startDate})
-  //                           .getRawMany()
-  //     }
-  //     const Value = (result.length != 0 && empid != null)? commonFun.converterJson(result) : commonFun.converterJson('result = ' + '0')
-  //     console.log(empid)
-  //     return Value;
-  //   } catch(E){
-  //       console.log(E)
-  //   }
+  async DeleteCmt_cmtFromComment(commentNum: number): Promise<boolean> {
+    try {
+      const result = await this.cmt_cmtRepository
+        .createQueryBuilder()
+        .update(Cmt_cmtEntity)
+        .set({ pause: this.pause })
+        .where({ commentNum: commentNum })
+        .execute();
+      return result.affected > 0;
+    } catch (E) {
+      console.log(E);
+      return false;
+    }
+  }
 
-  // }
+  async DeleteCmt_cmtFromNbo(nboNum: number): Promise<boolean> {
+    try {
+      const result = await this.cmt_cmtRepository
+        .createQueryBuilder()
+        .update(Cmt_cmtEntity)
+        .set({ pause: this.pause })
+        .where({ nboNum: nboNum })
+        .execute();
+      return result.affected > 0;
+    } catch (E) {
+      console.log(E);
+      return false;
+    }
+  }
 
-  //    async testArr (idx:number,empid:string,startDate:string,endDate:string): Promise<string>{
-  //       try{
-  //         let result
-  //         if(endDate != ''){
-  //           result = await this.ecg_csv_ecgdata_arrRepository.createQueryBuilder('ecg_csv_ecgdata_arr')
-  //                               .select(this.testSel)
-  //                               .where({"idx":MoreThan(idx)})
-  //                               .andWhere({"eq":empid})
-  //                               .andWhere({"writetime":MoreThan(startDate)})
-  //                               .andWhere({"writetime":LessThan(endDate)})
-  //                               .getRawMany()
-  //         }else{
-  //           result = await this.ecg_csv_ecgdata_arrRepository.createQueryBuilder()
-  //                               .select(this.testSel)
-  //                               .where({"idx":MoreThan(idx)})
-  //                               .andWhere({"eq":empid})
-  //                               .andWhere({"writetime":LessThan(endDate)})
-  //                               .getRawMany()
-  //         }
-  //         const Value = (result.length != 0 && empid != null)? commonFun.convertCsv(commonFun.converterJson(result)) : commonFun.converterJson('result = ' + '0')
-  //         console.log(empid)
-  //         return Value;
-  //       } catch(E){
-  //           console.log(E)
-  //       }
+  async InsertCmt_cmt(body: CmtDTO) {
+    try {
+      const value = {
+        id: body.id,
+        useridx: body.useridx,
+        nboNum: body.nboNum,
+        commentNum: body.commentNum,
+        aka: body.aka,
+        content: body.content,
+        isImg: Number(body.img ? this.use : this.pause),
+      };
+      const result = await this.commentRepository
+        .createQueryBuilder()
+        .insert()
+        .into(Cmt_cmtEntity)
+        .values([value])
+        .execute();
 
-  //    }
+      let values;
+      if (body.img && result.identifiers.length > 0) {
+        values = await this.getCmtcmtOrCommentInsertWithImage(
+          result,
+          value,
+          body,
+          body.commentNum,
+        );
+      } else if (result.identifiers.length > 0) {
+        values = await this.getCmtcmtOrCommentInsertWithoutImage(
+          result,
+          value,
+          body.commentNum,
+        );
+      }
+      console.log('InsertCmt_cmt');
+      return values;
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
+    }
+  }
 
-  //    async arrPreEcgData (eq:string,date:string): Promise<string>{
-  //     try{
-  //       const subQuery = await this.subQueryArr(eq,date)
-  //       const result = await this.ecg_csv_ecgdata_arrRepository.createQueryBuilder('a')
-  //                                 .select('b.ecgpacket ecg , a.ecgpacket arr')
-  //                                 .leftJoin(subQuery,'b','a.eq = b.eq AND b.writetime BETWEEN DATE_SUB(a.writetime,INTERVAL 4 SECOND) AND DATE_SUB(a.writetime,INTERVAL 2 SECOND)')
-  //                                 .where({"eq":eq})
-  //                                 .andWhere({"writetime":date})
-  //                                 .getRawMany()
-  //       const Value = (result.length != 0 && eq != null)? commonFun.converterJson(result) : commonFun.converterJson('result = ' + '0')
-  //       return Value;
-  //     }catch(E){
-  //       console.log(E)
-  //     }
-  //    }
+  async getCmtcmtOrCommentInsertWithImage(
+    result: any,
+    value: any,
+    body: any,
+    commentNum?: number,
+  ) {
+    const idx: number = result.identifiers[0].idx;
+    const writetime = dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss');
+    const imgResult = commentNum
+      ? await this.commentImgService.InsertCmt_cmtImg(body, idx)
+      : await this.commentImgService.InsertCommentImg(body, idx);
+    if (imgResult) {
+      if (commentNum) {
+        const commentResult = await this.UpdateCommentes(body.commentNum);
+        const values = {
+          idx: idx,
+          writetime: writetime,
+          ...value,
+        };
+        return commentResult ? (values as Cmt_cmtEntity) : {};
+      }
 
-  //    async subQueryArr(eq:string,writetime:string): Promise<string>{
-  //     const subSelect = 'eq,writetime,ecgpacket'
-  //     const onlyDate = writetime.split(' ')[0]
-  //     try{
-  //       const result = await this.ecg_csv_ecgdataRepository.createQueryBuilder()
-  //       .subQuery()
-  //       .select(subSelect)
-  //       .from(ecg_csv_ecgdataEntity,'')
-  //       .where(`eq = '${eq}'`)
-  //       .andWhere(`writetime <= '${writetime}'`)
-  //       .andWhere(`writetime >= '${onlyDate}'`)
-  //       .orderBy('writetime','DESC')
-  //       .limit(6)
-  //       .getQuery()
-  //       return result
-  //     }catch(E){
-  //       console.log(E)
-  //     }
-  //   }
+      const values = {
+        idx: idx,
+        writetime: writetime,
+        ...value,
+      };
+      return values as CommentEntity;
+    }
+  }
+
+  async getCmtcmtOrCommentInsertWithoutImage(
+    result: any,
+    value: any,
+    commentNum?: number,
+  ) {
+    const idx: number = result.identifiers[0].idx;
+    const writetime = dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss');
+    if (commentNum) {
+      const commentResult = await this.UpdateCommentes(commentNum);
+      const values = {
+        idx: idx,
+        writetime: writetime,
+        ...value,
+      };
+      return commentResult ? (values as Cmt_cmtEntity) : {};
+    }
+    const values = {
+      idx: idx,
+      writetime: writetime,
+      ...value,
+    };
+    return values as CommentEntity;
+  }
+
+  async UpdateCommentes(idx: number): Promise<boolean> {
+    try {
+      const result = await this.commentRepository
+        .createQueryBuilder()
+        .update(CommentEntity)
+        .set({ commentes: () => 'commentes + 1' })
+        .where({ idx: idx })
+        .execute();
+
+      console.log('UpdateCommentes');
+      return result.affected > 0;
+    } catch (E) {
+      console.log(E);
+      return false;
+    }
+  }
 }

@@ -49,9 +49,6 @@ export class UserEntity {
 
   @Column({ type: 'varchar' })
   alarm_token: string;
-
-  @Column({ type: 'tinyint' })
-  visible: number;
 }
 
 @Entity('del_user_log')
@@ -100,7 +97,4 @@ export class DelUserLogEntity {
 
   @Column({ type: 'varchar' })
   alarm_token: string;
-
-  @Column({ type: 'tinyint' })
-  visible: number;
 }

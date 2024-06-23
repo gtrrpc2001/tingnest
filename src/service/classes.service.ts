@@ -49,14 +49,14 @@ export class ClassesService {
     if (body.background_img) {
       background_img = commonFun.getImageBuffer(body.background_img);
     } else {
-      background_img = []; // 기본 이미지
+      background_img = null
     }
 
     let profile_img;
     if (body.profile_img) {
       profile_img = commonFun.getImageBuffer(body.profile_img);
     } else {
-      profile_img = []; // 기본 이미지
+      profile_img = null
     }
 
     const values = {
@@ -64,7 +64,7 @@ export class ClassesService {
       background_img: background_img,
       profile_img: profile_img,
       writetime: body.writetime,
-      name: body.name,
+      title: body.title,
       content: body.content,
     };
 
