@@ -62,7 +62,8 @@ export class CommentService {
         .select('*')
         .where({ postNum: postNum })
         .andWhere({ pause: this.use })
-        .orderBy('writetime', 'DESC')
+        .orderBy('likes', 'DESC')
+        .addOrderBy('writetime', 'DESC')
         .getRawMany();
       const values = this.Sort_CommentWithCmt(result, userId);
       console.log('getComment');
@@ -79,7 +80,8 @@ export class CommentService {
         .select('*')
         .where({ commentNum: commentNums })
         .andWhere({ pause: this.use })
-        .orderBy('writetime', 'DESC')
+        .orderBy('likes', 'DESC')
+        .addOrderBy('writetime', 'DESC')
         .getRawMany();
       const values = this.Sort_CommentWithCmt(result, userId);
       console.log('getComments');
