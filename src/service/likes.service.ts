@@ -264,7 +264,7 @@ export class LikesService {
       );
 
       if (result.affected > 0) {
-        const likesResult = await this.Comment_LikesDecrease(body.nbo_idx);
+        const likesResult = await this.Comment_LikesDecrease(body.comment_idx);        
         return likesResult;
       } else {
         return { msg: '좋아요 취소 했습니다.!!' };
@@ -313,7 +313,7 @@ export class LikesService {
         .set({ likes: () => 'likes - 1' })
         .where('likes > 0 AND idx = :idx', { idx: comment_idx })
         .execute();
-
+      console.log(comment_idx)
       return result.affected > 0;
     } catch (E) {
       console.log(E);
