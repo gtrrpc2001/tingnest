@@ -27,6 +27,9 @@ export class Comment_LikesEntity {
   id: string;
 
   @Column({ type: 'int' })
+  nbo_idx: number;
+
+  @Column({ type: 'int' })
   comment_idx: number;
 
   @Column({ type: 'datetime' })
@@ -43,6 +46,12 @@ export class Cmtcmt_LikesEntity {
 
   @Column({ type: 'varchar' })
   id: string;
+
+  @Column({ type: 'int' })
+  nbo_idx: number;
+
+  @Column({ type: 'int' })
+  comment_idx: number;
 
   @Column({ type: 'int' })
   cmt_idx: number;

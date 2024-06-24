@@ -45,6 +45,8 @@ export class LikesService {
         return await this.DeleteComment_Likes(body);
       case 'deleteCmtcmt_likes':
         return await this.DeleteCmtcmt_Likes(body);
+      case 'Check_Likes':
+        return await this.Check_Likes(body)
       case 'Check_Nbo_Likes':
         return await this.Check_Nbo_Likes(body);
       case 'Check_Comment_Likes':
@@ -117,6 +119,7 @@ export class LikesService {
         .values([
           {
             id: body.id,
+            nbo_idx: body.nbo_idx,
             comment_idx: body.comment_idx,
           },
         ])
@@ -148,6 +151,8 @@ export class LikesService {
         .values([
           {
             id: body.id,
+            nbo_idx: body.nbo_idx,
+            comment_idx: body.comment_idx,
             cmt_idx: body.cmtCmt_idx,
           },
         ])
@@ -332,6 +337,24 @@ export class LikesService {
     }
   }
 
+  async Check_Likes(body: LikesDTO){
+    try{
+      const nbo_Likes = await this.Check_Nbo_LikesList(body.id)
+      const comment_Likes = await this.Check_Comment_LikesList(body.id)
+      const cmtCmt_Likes = await this.Check_Cmtcmt_LikesList(body.id)
+      const result = {
+        nboLikes:nbo_Likes,
+        commentLikes:comment_Likes,
+        cmtCmtLikes:cmtCmt_Likes
+      }
+      console.log('Check_Likes ', result)
+      return result
+    }catch(E){
+      console.log(E)
+      return {msg:E}
+    }    
+  }
+
   async Check_Nbo_Likes(body: LikesDTO): Promise<boolean> {
     try {
       const existingLike = await this.nbo_LikesRepository.findOne({
@@ -358,10 +381,59 @@ export class LikesService {
     }
   }
 
+  async Check_Nbo_LikesList(id:string): Promise<number[]> {
+    try {
+      const existingLike = await this.nbo_LikesRepository.find({
+        select: ['nbo_idx'],
+        where: { id: id, pause: this.use },
+      });
+      console.log('Check_Nbo_LikesList');
+      return existingLike.map(e => e.nbo_idx);
+    } catch (E) {
+      console.log('Check_Nbo_LikesList ', E);
+      return [];
+    }
+  }
+
+  async Check_Comment_LikesList(id:string): Promise<number[]> {
+    try {
+      const existingLike = await this.comment_LikesRepository.find({
+        select: ['comment_idx'],
+        where: { id: id, pause: this.use },
+      });
+      console.log('Check_Comment_LikesList');
+      return existingLike.map(e => e.comment_idx);
+    } catch (E) {
+      console.log('Check_Comment_LikesList', E);
+      return [];
+    }
+  }
+
+  async Check_Cmtcmt_LikesList(id:string): Promise<number[]> {
+    try {
+      const existingLike = await this.cmtCmt_LikesRepository.find({
+        select: ['cmt_idx'],
+        where: {
+          id: id,
+          pause: this.use,
+        },
+      });
+      console.log('Check_Cmtcmt_LikesList');
+      return existingLike.map(e => e.cmt_idx);
+    } catch (E) {
+      console.log('Check_Cmtcmt_LikesList', E);
+      return [];
+    }
+  }
+
   async Check_Cmtcmt_Likes(body: LikesDTO): Promise<boolean> {
     try {
       const existingLike = await this.cmtCmt_LikesRepository.findOne({
-        where: { id: body.id, cmt_idx: body.cmtCmt_idx, pause: this.use },
+        where: {
+          id: body.id,
+          cmt_idx: body.cmtCmt_idx,
+          pause: this.use,
+        },
       });
       console.log('Check_Cmtcmt_Likes');
       return existingLike ? true : false;
