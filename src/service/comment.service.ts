@@ -16,7 +16,7 @@ export class CommentService {
     private cmt_cmtRepository: Repository<Cmt_cmtEntity>,
     private commentImgService: CommentImgService,
     private config: ConfigService,
-  ) {}
+  ) { }
 
   use: number = this.config.get<number>('USE');
   pause: number = this.config.get<number>('PAUSE');
@@ -39,51 +39,71 @@ export class CommentService {
         .execute();
       let values
       if (body.img && result.identifiers.length > 0) {
-         values = await this.getCmtcmtOrCommentInsertWithImage(
+        values = await this.getCmtcmtOrCommentInsertWithImage(
           result,
           value,
           body,
-        );        
+        );
       } else if (result.identifiers.length > 0) {
         values = await this.getCmtcmtOrCommentInsertWithoutImage(result, value);
       }
       console.log('CommentInsert');
-      return values;      
+      return values;
     } catch (E) {
       console.log(E);
       return false;
     }
   }
 
-  async getComment(postNum: number): Promise<CommentEntity[]> {
+  async getComment(postNum: number, userId: string): Promise<CommentEntity[]> {
     try {
       const result: CommentEntity[] = await this.commentRepository
         .createQueryBuilder()
         .select('*')
         .where({ postNum: postNum })
         .andWhere({ pause: this.use })
+        .orderBy('writetime', 'DESC')
         .getRawMany();
-      return result;
+      const values = this.Sort_CommentWithCmt(result, userId);
+      console.log('getComment');
+      return values;
     } catch (E) {
       console.log(E);
     }
   }
 
-  async getComments(commentNums: number): Promise<CmtDTO[]> {
+  async getComments(commentNums: number, userId: string): Promise<CmtDTO[]> {
     try {
       const result = await this.cmt_cmtRepository
         .createQueryBuilder()
         .select('*')
         .where({ commentNum: commentNums })
         .andWhere({ pause: this.use })
+        .orderBy('writetime', 'DESC')
         .getRawMany();
+      const values = this.Sort_CommentWithCmt(result, userId);
       console.log('getComments');
-      return result;
+      return values
     } catch (E) {
       console.log(E);
       return [];
     }
   }
+
+  Sort_CommentWithCmt(result: any[], userId: string) {
+    const equalId = [];
+    const otherIds = [];
+
+    for (const value of result) {
+      if (value.id === userId) {
+        equalId.push(value);
+      } else {
+        otherIds.push(value);
+      }
+    }
+    return [...equalId, ...otherIds];
+  }
+
 
   async CommentUpdate(body: CommentDTO): Promise<boolean | { msg: string }> {
     try {

@@ -26,7 +26,7 @@ export class LikesService {
     @InjectRepository(Cmt_cmtEntity)
     private cmtCmtRepository: Repository<Cmt_cmtEntity>,
     private config: ConfigService,
-  ) {}
+  ) { }
 
   use: number = this.config.get<number>('USE');
   pause: number = this.config.get<number>('PAUSE');
@@ -337,22 +337,22 @@ export class LikesService {
     }
   }
 
-  async Check_Likes(body: LikesDTO){
-    try{
+  async Check_Likes(body: LikesDTO) {
+    try {
       const nbo_Likes = await this.Check_Nbo_LikesList(body.id)
       const comment_Likes = await this.Check_Comment_LikesList(body.id)
       const cmtCmt_Likes = await this.Check_Cmtcmt_LikesList(body.id)
       const result = {
-        nboLikes:nbo_Likes,
-        commentLikes:comment_Likes,
-        cmtCmtLikes:cmtCmt_Likes
+        nboLikes: nbo_Likes,
+        commentLikes: comment_Likes,
+        cmtCmtLikes: cmtCmt_Likes
       }
       console.log('Check_Likes ', result)
       return result
-    }catch(E){
+    } catch (E) {
       console.log(E)
-      return {msg:E}
-    }    
+      return { msg: E }
+    }
   }
 
   async Check_Nbo_Likes(body: LikesDTO): Promise<boolean> {
@@ -381,21 +381,20 @@ export class LikesService {
     }
   }
 
-  async Check_Nbo_LikesList(id:string): Promise<number[]> {
+  async Check_Nbo_LikesList(id: string) {
     try {
       const existingLike = await this.nbo_LikesRepository.find({
         select: ['nbo_idx'],
         where: { id: id, pause: this.use },
       });
-      console.log('Check_Nbo_LikesList');
-      return existingLike.map(e => e.nbo_idx);
+      return existingLike.map(e => e.nbo_idx);      
     } catch (E) {
       console.log('Check_Nbo_LikesList ', E);
       return [];
     }
   }
 
-  async Check_Comment_LikesList(id:string): Promise<number[]> {
+  async Check_Comment_LikesList(id: string): Promise<number[]> {
     try {
       const existingLike = await this.comment_LikesRepository.find({
         select: ['comment_idx'],
@@ -409,7 +408,7 @@ export class LikesService {
     }
   }
 
-  async Check_Cmtcmt_LikesList(id:string): Promise<number[]> {
+  async Check_Cmtcmt_LikesList(id: string): Promise<number[]> {
     try {
       const existingLike = await this.cmtCmt_LikesRepository.find({
         select: ['cmt_idx'],

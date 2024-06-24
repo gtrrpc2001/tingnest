@@ -198,7 +198,7 @@ export class NboService {
     }
   }
 
-  async ClickNbo(idx: number) {
+  async ClickNbo(idx: number,id:string) {
     try {
       const result: NboEntity = await this.nboRepository
         .createQueryBuilder()
@@ -207,10 +207,11 @@ export class NboService {
         .getRawOne();
 
       if (result) {
-        const commentReslt = await this.commentService.getComment(idx);
+        const commentReslt = await this.commentService.getComment(idx,id);
         const nbo_comment_imgIdxArr = await this.returnNboComment(
           result,
           commentReslt,
+          id
         );
         console.log('nbo_comment_imgIdxArr ', nbo_comment_imgIdxArr);
         return nbo_comment_imgIdxArr;
@@ -298,13 +299,13 @@ export class NboService {
   async returnNboComment(
     n: NboEntity,
     commentArr: CommentEntity[],
+    userId:string
   ): Promise<NboInterface> {
     const nboList: CommentDTO[] = [];
     for (const c of commentArr) {
       let cmtArr: CmtDTO[] = [];
       if (c.commentes > 0) {
-        const commentsResult = await this.commentService.getComments(c.idx);
-        cmtArr = commentsResult.filter((cmt) => cmt.commentNum === c.idx);
+        cmtArr = await this.commentService.getComments(c.idx,userId);
       }
       const model: CommentDTO = {
         idx: c.idx,

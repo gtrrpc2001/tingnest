@@ -56,7 +56,7 @@ export class nboController {
   @Get('/nboClick')
   async getClick(@Query('idx') idx: number, @Query('id') id: string) {
     const result = await this.nboService.Add_NboViews(idx, id);
-    return await this.nboService.ClickNbo(idx);
+    return await this.nboService.ClickNbo(idx,id);
   }
 
   @Get('/nboImgFirstSelect')
@@ -102,7 +102,7 @@ export class nboController {
   }
 
   @Get('/test')
-  async test(@Query('idx') idx: number){
-    return await this.commentService.getComments(idx)
+  async test(@Query('idx') idx: number,@Query('id') id: string){
+    return await this.commentService.getComment(idx,id)
   }
 }
