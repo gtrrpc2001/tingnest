@@ -24,12 +24,12 @@ export class PositionDTO {
   @IsNumber()
   @IsOptional()
   @ApiProperty({ type: Number, description: '' })
-  readonly latitude: number;
+  readonly latitude?: number;
 
   @IsNumber()
   @IsOptional()
   @ApiProperty({ type: Number, description: '' })
-  readonly longitude: number;
+  readonly longitude?: number;
 
   @IsString()
   @IsOptional()

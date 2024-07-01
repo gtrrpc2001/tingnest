@@ -26,7 +26,7 @@ export class NboImgService {
       for (const value of nboImg) {
         const img = commonFun.getImageBuffer(value);
 
-        const insert = await this.nboImgLogRepository
+        const insert = await this.nboImgRepository
           .createQueryBuilder()
           .insert()
           .into(NboImgEntity)
@@ -54,23 +54,26 @@ export class NboImgService {
     body: NboImgDTO,
     nboidx: number,
     isImg: number,
-  ): Promise<boolean> {
+  ) {
     try {
-      let isSuccess = true;      
+      let isSuccess;      
       if (isImg) {
         for (const idx of body.idx) {          
           isSuccess = await this.updateImages(idx,nboidx,null)
           if(!isSuccess){
             break;
           }
-        }
+        }        
       } else {
+        const idxArr:number[] = []
         for (const [index, value] of body.nboImg.entries()) {          
           isSuccess = await this.updateImages(body.idx[index],nboidx,value)
           if(!isSuccess){
             break;
           }
+          idxArr.push(isSuccess)
         }
+        return idxArr;
       }
       console.log('UpdateImg');
       return isSuccess;
@@ -83,19 +86,25 @@ export class NboImgService {
   async updateImages(idx: number, nboidx: number,value?:number[]) {
     const imageLogData = await this.getImage(idx);
     const imageLogInsertResult = await this.InsertImgLog(imageLogData, nboidx);
-
     if (imageLogInsertResult) {
-      const writetime = dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss');
-      const img = value ? commonFun.getImageBuffer(value) : value
-      const result = await this.nboImgRepository
-        .createQueryBuilder()
-        .update(NboImgEntity)
-        .set({ nboImg: img, writetime: writetime })
-        .where({ idx: idx })
-        .execute();
-
-      if (result.affected > 0) {
-        return true;
+      const deleteResult = await this.deleteOne(idx);
+      if(value && deleteResult){
+        const img = commonFun.getImageBuffer(value)
+        const result = await this.nboImgRepository
+          .createQueryBuilder()
+          .insert()
+          .into(NboImgEntity)
+          .values([{
+            id: imageLogData.id,
+            nboidx: nboidx,
+            nboImg: img,
+          }])
+          .execute();
+          if(result.identifiers.length > 0){
+            return Number(result.identifiers[0].idx)
+          }
+      }else if(deleteResult){
+        return deleteResult;
       }
     }
     return false;
@@ -214,16 +223,20 @@ export class NboImgService {
   async DeleteNboImg(nboidx: number): Promise<boolean> {
     try {
       const nboImges = await this.selectImg(nboidx);
-      const results = [];
-      for (const i of nboImges) {
-        const result = await this.InsertImgLog(i, nboidx);
-        results.push(result);
-      }
-      if (results.every((result) => result === true)) {
-        const result = await this.delete(nboidx);
-        return result;
-      } else {
-        return false;
+      if(nboImges.length > 0) {
+        const results = [];
+        for (const i of nboImges) {
+          const result = await this.InsertImgLog(i, nboidx);
+          results.push(result);
+        }
+        if (results.every((result) => result === true)) {
+          const result = await this.delete(nboidx);
+          return result;
+        } else {
+          return false;
+        }
+      }else{
+        return true;
       }
     } catch (E) {
       console.log('DeleteNboImg : ' + E);
@@ -237,6 +250,20 @@ export class NboImgService {
         .createQueryBuilder()
         .delete()
         .where({ nboidx: nboidx })
+        .execute();
+      return result.affected > 0;
+    } catch (E) {
+      console.log('delete : ' + E);
+      return false;
+    }
+  }
+
+  async deleteOne(idx: number): Promise<boolean> {
+    try {
+      const result = await this.nboImgRepository
+        .createQueryBuilder()
+        .delete()
+        .where({ idx: idx })
         .execute();
       return result.affected > 0;
     } catch (E) {

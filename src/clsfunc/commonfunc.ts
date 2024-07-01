@@ -1,17 +1,24 @@
 import { isDefined } from 'class-validator';
-import * as fs from 'fs'
+import * as fs from 'fs';
 import { Response } from 'express';
 import { Readable } from 'stream';
+import * as dayjs from 'dayjs';
 
-export class commonFun {
+export class commonFun {  
+
+  static getDayjs = (): string => {
+    const result = dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss');
+    return result;
+  };
+
   static converterJson(result: any) {
     return JSON.stringify(result);
   }
 
   static async getDefault_ImageAsBase64(filePath: string): Promise<string> {
-    try {      
+    try {
       const imageBuffer = await fs.promises.readFile(filePath);
-      const imageBase64 = this.getImageBase64(imageBuffer)
+      const imageBase64 = this.getImageBase64(imageBuffer);
       return imageBase64;
     } catch (error) {
       console.log('파일을 읽는 중 오류가 발생했습니다: ' + error.message);
@@ -19,7 +26,7 @@ export class commonFun {
   }
 
   static async getDefault_ImageAsBuffer(filePath: string): Promise<Buffer> {
-    try {      
+    try {
       const imageBuffer = await fs.promises.readFile(filePath);
       return imageBuffer;
     } catch (error) {
@@ -81,5 +88,3 @@ export class commonFun {
     });
   };
 }
-
-

@@ -102,7 +102,7 @@ export class nboController {
   }
 
   @Get('/test')
-  async test(@Query('idx') idx: number,@Query('id') id: string){
-    return await this.commentService.getComment(idx,id)
+  async test(@Query('parentId') parentId: number[],@Query('userid') userid:string){
+    return await this.commentService.getCommentsByParentIds(parentId,userid)
   }
 }

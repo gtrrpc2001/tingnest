@@ -4,6 +4,7 @@ export interface Position {
   userIdx: number;
   position: rect;
   visible:number; //0 invisible , 1 visible
+  imgupDate?:string;
 }
 
 export interface rect {

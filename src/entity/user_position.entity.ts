@@ -14,9 +14,6 @@ export class UserPositionEntity {
   writetime: string;
 
   @Column({ type: 'datetime' })
-  renewtime: string;
-
-  @Column({ type: 'datetime' })
   imgupdate: string;
 
   @Column({ type: 'double' })

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserDTO } from '../dto/user.dto';
 import { commonFun } from 'src/clsfunc/commonfunc';
-import { DelUserLogEntity, UserEntity } from 'src/entity/user.entity';
+import { UserEntity } from 'src/entity/user.entity';
 import { isDefined } from 'class-validator';
 import { pwBcrypt } from 'src/clsfunc/pwAES';
 import { Login_logService } from './login_log.service';
@@ -15,6 +15,8 @@ import { PositionDTO } from 'src/dto/position.dto';
 import { PositionService } from './position.service';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { NboService } from './nbo.service';
+import { UserPositionEntity } from 'src/entity/user_position.entity';
+import { UserPositionEventGateway } from './UserPositionEventGateway.service';
 
 @Injectable()
 export class UserService {
@@ -22,15 +24,15 @@ export class UserService {
   constructor(
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
-    @InjectRepository(DelUserLogEntity)
-    private DeleteUserLogRepository: Repository<DelUserLogEntity>,
     private positionService: PositionService,
     private login_logService: Login_logService,
     private config: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
     private nboService: NboService,
+    private positionSocket: UserPositionEventGateway,
   ) {}
-
+  pause = Number(this.config.get<number>('PAUSE'));
+  use = Number(this.config.get<number>('USE'));
   path = this.config.get<string>('DEFAULT_PROFILE_IMAGE_PATH');
   activate = this.config.get<string>('USER_ACTIVITY_LOGIN');
 
@@ -40,6 +42,8 @@ export class UserService {
         return await this.checkIDDupe(body.id);
       case 'login':
         return await this.Login(body);
+      case 'login_log':
+        return this.LoginLog_scheduleCancel(body);
       case 'logout':
         //to do
         return await this.scheduleLogout(body);
@@ -68,13 +72,14 @@ export class UserService {
       const timeoutDuration = 10 * 60 * 1000;
       const timeout = setTimeout(async () => {
         try {
-          const guard = this.config.get<number>('USER_GUARD_LOGOUT');
+          const guard = Number(this.config.get<number>('USER_GUARD_LOGOUT'));
+          const activate = this.config.get<string>('USER_ACTIVITY_LOGOUT');
+
           const logBody: Login_logDTO = {
             id: body.id,
-            writetime: body.writetime,
-            activity: body.activate,
+            activity: activate,
           };
-          await this.login_logService.LogInsert(logBody);
+          await this.login_logService.LogInsert(logBody, false);
 
           this.logger.debug(
             `user logout activity update ${body.id} :: ${body.activate}`,
@@ -92,6 +97,27 @@ export class UserService {
       }, timeoutDuration); // 10분 후 실행
 
       this.schedulerRegistry.addTimeout(`${body.id}_logout`, timeout);
+
+      return true;
+    } catch (E) {
+      console.log(E);
+      return { msg: E };
+    }
+  }
+
+  async LoginLog_scheduleCancel(body: UserDTO) {
+    try {
+      const check = this.schedulerRegistry.getTimeouts();
+      if (check.find((c) => c === `${body.id}_logout`)) {
+        this.schedulerRegistry.deleteTimeout(`${body.id}_logout`);
+      } else {
+        const logModel: Login_logDTO = {
+          id: body.id,
+          activity: this.activate,
+        };
+        await this.login_logService.LogInsert(logModel, true);
+      }
+
       return true;
     } catch (E) {
       console.log(E);
@@ -115,24 +141,16 @@ export class UserService {
 
   async userDelete(body: UserDTO) {
     try {
-      var info = await this.getUserDelete_Info(body.id);
-      if (!info) {
-        let bool = await this.setInsert(
-          this.DeleteUserLogRepository,
-          DelUserLogEntity,
-          body,
-        );
+      let nboLogInsertBool = [];
+      for (const i of body.nboIdx) {
+        const result = await this.nboService.DeleteNbo(i);
+        nboLogInsertBool.push(result);
+      }
 
-        let nboLogInsertBool;
-        for (const i of body.nboIdx) {
-          nboLogInsertBool = await this.nboService.DeleteNbo(i);
-        }
-
-        if (bool && nboLogInsertBool == true) {
-          return await this.setDelete(body.id);
-        } else {
-          return { msg: 0 };
-        }
+      if (nboLogInsertBool.every((b) => b === true)) {
+        return await this.setDelete(body.id);
+      } else {
+        return { msg: 0 };
       }
     } catch (E) {
       console.log(E);
@@ -144,24 +162,11 @@ export class UserService {
     try {
       const result = await this.userRepository
         .createQueryBuilder()
-        .delete()
+        .update(UserEntity)
+        .set({ pause: this.pause })
         .where({ id: id })
         .execute();
       return result.affected > 0;
-    } catch (E) {
-      console.log(E);
-      return { msg: E };
-    }
-  }
-
-  async getUserDelete_Info(id: string): Promise<any> {
-    try {
-      const result: UserEntity = await this.userRepository
-        .createQueryBuilder()
-        .select('*')
-        .where({ id: id })
-        .getRawOne();
-      return result;
     } catch (E) {
       console.log(E);
       return { msg: E };
@@ -171,22 +176,22 @@ export class UserService {
   async profileUpdate(body: UserDTO): Promise<any> {
     try {
       const profile = commonFun.getImageBuffer(body.profile);
-      console.log(body.imgupdate);
+      const imgupdate = commonFun.getDayjs();
       const result = await this.userRepository
         .createQueryBuilder()
         .update(UserEntity)
         .set({
-          imgupdate: body.imgupdate,
+          imgupdate: imgupdate,
           profile: profile,
         })
-        .where({ id: body.id })
+        .where({ idx: body.idx })
         .execute();
-      await this.positionService.UserPositionUpdateRenewDate(
-        body.id,
-        body.imgupdate,
-      );
-      console.log('setProfile');
-      return result.affected > 0;
+      console.log('profileUpdate');
+      if (result.affected > 0) {
+        this.positionSocket.UpdateImgupDate(body.idx, imgupdate);
+        return imgupdate;
+      }
+      return { msg: 0 };
     } catch (E) {
       console.log('profileUpdate' + E);
       return { msg: E };
@@ -223,21 +228,13 @@ export class UserService {
 
   async signUp(body: UserDTO): Promise<any> {
     try {
-      const result = await this.setInsert(
-        this.userRepository,
-        UserEntity,
-        body,
-        true,
-      );
+      const imgupdate = commonFun.getDayjs();
+      const result = await this.setInsert(body, imgupdate);
       const positionBody: PositionDTO = {
         useridx: result,
         id: body.id,
-        imgupdate: body.imgupdate,
-        latitude: 0,
-        longitude: 0,
-        address: null,
         aka: body.aka,
-        visible:body.visible
+        imgupdate: imgupdate,
       };
       console.log(positionBody);
       const userPositionResult =
@@ -249,12 +246,7 @@ export class UserService {
     }
   }
 
-  async setInsert(
-    repository: Repository<any>,
-    entity: any,
-    body: UserDTO,
-    primary: boolean = false,
-  ): Promise<any> {
+  async setInsert(body: UserDTO, imgupdate: string): Promise<any> {
     try {
       const AESpwd = await pwBcrypt.transformPassword(body.pwd);
       let profile: Buffer;
@@ -263,10 +255,10 @@ export class UserService {
       } else {
         profile = null;
       }
-      const result = await repository
+      const result = await this.userRepository
         .createQueryBuilder()
         .insert()
-        .into(entity)
+        .into(UserEntity)
         .values([
           {
             id: body.id,
@@ -274,8 +266,7 @@ export class UserService {
             pwd: AESpwd,
             birth: body.birth,
             gender: body.gender,
-            signupdate: body.signupdate,
-            pause: body.pause,
+            imgupdate: imgupdate,
             profile: profile,
             aka: body.aka,
             guard: 0,
@@ -283,30 +274,52 @@ export class UserService {
             access_token: body.access_token,
             refresh_token: body.refresh_token,
             alarm_token: body.alarm_token,
-            visible: body.visible,
           },
         ])
         .execute();
 
       console.log('setInsert user');
-      console.log(result.identifiers);
-      return primary ? result.identifiers[0].idx : true;
+      return result.identifiers.length > 0
+        ? result.identifiers[0].idx
+        : { msg: 0 };
     } catch (E) {
       console.log('setInsert : ' + E);
       return false;
     }
   }
 
-  async sendProfile(res: Response, idx: number): Promise<any> {
+  index = 0;
+
+  getIdFromIndex() {
+    switch (this.index) {
+      case 0:
+        return 'test';
+      case 1:
+        return 'tingtest';
+      case 2:
+        return 'test1004';
+    }
+  }
+
+  async sendProfile(
+    res: Response,
+    idx: number,
+    imgupdate: string,
+  ): Promise<any> {
     try {
-      const visible = this.config.get<number>('USER_VISIBLE_SHOW');
+      if (this.index > 2) {
+        this.index = 0;
+      }
+      const imgDate = imgupdate ? `imgupdate = '${imgupdate}'` : '1 = 1';
+      const id = this.getIdFromIndex();
       const result: UserEntity = await this.userRepository
         .createQueryBuilder()
         .select('profile')
         .where({ id: 'test' })
-        // .where({"idx":idx})
-        // .andWhere({ activate: this.activate })
         .getRawOne();
+      // .andWhere(imgDate)
+      // .where({"idx":idx})
+      // .andWhere({ activate: this.activate })
       if (result.profile) {
         commonFun.ResponseImage(res, result.profile);
       } else {
@@ -315,37 +328,31 @@ export class UserService {
         );
         commonFun.ResponseImage(res, default_profileImage);
       }
+      this.index += 1;
     } catch (E) {
       res.send({ msg: E });
     }
-  }  
+  }
 
   async getProfile(id: string): Promise<any> {
     try {
-      const result: UserEntity = await this.userRepository
-        .createQueryBuilder()
-        .select('idx,id,phone,birth,gender,profile,aka')
+      const result = await this.userRepository
+        .createQueryBuilder('a')
+        .select(
+          'a.idx,a.id,a.phone,a.birth,a.gender,a.profile,a.aka,a.imgupdate,b.visible',
+        )
+        .innerJoin(UserPositionEntity, 'b', 'a.idx = b.useridx')
         .where({ id: id })
         .getRawOne();
-
-      let profile: string;
-      if (result.profile) {
-        profile = commonFun.getImageBase64(result.profile);
-      } else {
-        profile = await commonFun.getDefault_ImageAsBase64(this.path);
-      }
-      const visible = await this.positionService.getUserPositionVisible(
-        result.id,
-      );
       const user = {
         idx: result.idx,
         id: id,
         phone: result.phone,
         birth: result.birth,
         gender: result.gender,
-        profile: profile,
         aka: result.aka,
-        visible: visible,
+        visible: result.visible,
+        imgupDate: result.imgupdate,
       };
       return commonFun.converterJson(user);
     } catch (E) {
@@ -357,10 +364,12 @@ export class UserService {
   async CheckLogin(body: UserDTO): Promise<boolean> {
     try {
       const result: UserEntity = await this.userRepository
-        .createQueryBuilder('')
+        .createQueryBuilder()
         .select('pwd')
         .where({ id: body.id })
+        .andWhere({ pause: this.use })
         .getRawOne();
+      console.log('CheckLogin ', result);
       var bool = await pwBcrypt.validatePwd(body.pwd, result.pwd);
       console.log('CheckLogin');
       return bool;
@@ -373,29 +382,23 @@ export class UserService {
     try {
       var bool = false;
       var profile = null;
-      const guard = this.config.get<number>('USER_GUARD_LOGIN');
+      const login = Number(this.config.get<number>('USER_GUARD_LOGIN'));
+      const logout = Number(this.config.get<number>('USER_GUARD_LOGOUT'));
 
-      if (body.guard == 0) {
-        var checkLogin = await this.CheckLogin(body);
-        if (checkLogin) {
-          bool = await commonQuery.UpdateGuard(
-            this.userRepository,
-            body.id,
-            this.activate,
-            guard,
-          );
-        }
-      } else if (body.guard == 1) {
-        bool = await this.Login_sec(body, guard);
+      if (body.guard == logout) {
+        //처음 로그인
+        bool = await this.CheckLogin(body);
+      } else if (body.guard == login) {
+        // 자동 로그인시
+        bool = await this.Login_sec(body, login);
       }
 
       if (bool) {
-        var logModel: Login_logDTO = {
+        const logModel: Login_logDTO = {
           id: body.id,
-          writetime: body.writetime,
           activity: this.activate,
         };
-        await this.login_logService.LogInsert(logModel);
+        await this.login_logService.LogInsert(logModel, true);
         profile = await this.getProfile(body.id);
       }
 
@@ -433,13 +436,8 @@ export class UserService {
           .select('id')
           .where({ id: id })
           .getRawMany();
-        if (result.length == 0) {
-          const rs = await this.DeleteUserLogRepository.createQueryBuilder()
-            .select('id')
-            .where({ id: id })
-            .getRawMany();
-          if (rs.length == 0) boolResult = true;
-        }
+
+        boolResult = result.length === 0;
       }
       console.log('checkIDDupe');
       return boolResult ? boolResult : { msg: 0 };

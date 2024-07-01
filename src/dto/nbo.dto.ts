@@ -23,6 +23,11 @@ export class NboDTO {
   @ApiProperty({ type: String, description: '' })
   readonly writetime: string;
 
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ type: String, description: '' })
+  readonly imgupDate: string;
+
   @IsNumber()
   @IsOptional()
   @ApiProperty({ type: Number, description: '' })
@@ -70,7 +75,7 @@ export class NboDTO {
 
   @IsOptional()
   @IsArray()
-  @ApiProperty({ type: Number, description: '' })
+  @ApiProperty({ type: 'number[][]', description: '' })
   readonly nboImg: number[][];
 
   @IsOptional()  

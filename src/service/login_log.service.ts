@@ -16,7 +16,7 @@ export class Login_logService {
     private userRepository: Repository<UserEntity>,
     private config: ConfigService,
   ) {}
-  async LogInsert(body: Login_logDTO): Promise<any> {
+  async LogInsert(body: Login_logDTO,login:boolean): Promise<any> {
     var boolResult = false;
     try {
       const result = await this.login_logRepository
@@ -26,12 +26,11 @@ export class Login_logService {
         .values([
           {
             id: body.id,
-            writetime: body.writetime,
             activity: body.activity,
           },
         ])
         .execute();
-      const guard = this.config.get<number>('USER_GUARD_LOGIN');
+      const guard = login ? Number(this.config.get<number>('USER_GUARD_LOGIN')) : Number(this.config.get<number>('USER_GUARD_LOGOUT'))
       await commonQuery.UpdateGuard(
         this.userRepository,
         body.id,

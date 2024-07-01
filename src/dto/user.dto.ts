@@ -55,7 +55,7 @@ export class UserDTO {
   @IsOptional()
   @IsString()
   @ApiProperty({ type: String, description: '' })
-  readonly imgupdate: string;
+  readonly imgupDate: string;
 
   @IsOptional()
   @IsArray()

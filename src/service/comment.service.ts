@@ -16,28 +16,29 @@ export class CommentService {
     private cmt_cmtRepository: Repository<Cmt_cmtEntity>,
     private commentImgService: CommentImgService,
     private config: ConfigService,
-  ) { }
+  ) {}
 
-  use: number = this.config.get<number>('USE');
-  pause: number = this.config.get<number>('PAUSE');
+  use: number = Number(this.config.get<number>('USE'));
+  pause: number = Number(this.config.get<number>('PAUSE'));
 
   async CommentInsert(body: CommentDTO) {
     try {
-      const value = {
+      const fixValue = {
         id: body.id,
         useridx: body.useridx,
         postNum: body.postNum,
         aka: body.aka,
-        content: body.content,
         isImg: Number(body.img ? this.use : this.pause),
+        imgupdate:body.imgupDate
       };
+      const value = this.getCheckContentValue(fixValue, body.content);
       const result = await this.commentRepository
         .createQueryBuilder()
         .insert()
         .into(CommentEntity)
         .values([value])
         .execute();
-      let values
+      let values;
       if (body.img && result.identifiers.length > 0) {
         values = await this.getCmtcmtOrCommentInsertWithImage(
           result,
@@ -56,10 +57,10 @@ export class CommentService {
   }
 
   async getComment(postNum: number, userId: string): Promise<CommentEntity[]> {
-    try {
+    try {      
       const result: CommentEntity[] = await this.commentRepository
         .createQueryBuilder()
-        .select('*')
+        .select('idx,id,writetime,useridx,postNum,aka,likes,content,isImg,commentes,imgupdate')
         .where({ postNum: postNum })
         .andWhere({ pause: this.use })
         .orderBy('likes', 'DESC')
@@ -71,26 +72,28 @@ export class CommentService {
     } catch (E) {
       console.log(E);
     }
-  }
+  } 
 
-  async getComments(commentNums: number, userId: string): Promise<CmtDTO[]> {
-    try {
+  async getCommentsByParentIds(commentNums: number[], userId: string) {
+    try {            
       const result = await this.cmt_cmtRepository
         .createQueryBuilder()
-        .select('*')
-        .where({ commentNum: commentNums })
+        .select('idx,id,writetime,useridx,nboNum,commentNum,aka,likes,content,isImg,imgupdate')
+        .where(`commentNum IN (${commentNums})`)
         .andWhere({ pause: this.use })
         .orderBy('likes', 'DESC')
         .addOrderBy('writetime', 'DESC')
         .getRawMany();
       const values = this.Sort_CommentWithCmt(result, userId);
-      console.log('getComments');
-      return values
+      console.log('getCommentsByParentIds');
+      return values;
     } catch (E) {
       console.log(E);
       return [];
     }
   }
+
+  
 
   Sort_CommentWithCmt(result: any[], userId: string) {
     const equalId = [];
@@ -104,52 +107,7 @@ export class CommentService {
       }
     }
     return [...equalId, ...otherIds];
-  }
-
-
-  async CommentUpdate(body: CommentDTO): Promise<boolean | { msg: string }> {
-    try {
-      const result = await this.commentRepository
-        .createQueryBuilder()
-        .update(CommentEntity)
-        .set({
-          content: body.content,
-          writetime: body.writetime,
-        })
-        .where({ idx: body.idx })
-        .execute();
-      if (body.img) {
-        const imgResult = await this.commentImgService.UpdateCommentImg(body);
-        return imgResult;
-      }
-      return result.affected > 0;
-    } catch (E) {
-      console.log(E);
-      return { msg: E };
-    }
-  }
-
-  async UpdateCmtcmt(body: CmtDTO): Promise<boolean | { msg: string }> {
-    try {
-      const result = await this.cmt_cmtRepository
-        .createQueryBuilder()
-        .update(Cmt_cmtEntity)
-        .set({
-          content: body.content,
-          writetime: body.writetime,
-        })
-        .where({ idx: body.idx })
-        .execute();
-      if (body.img) {
-        const imgResult = await this.commentImgService.UpdateCmt_cmtImg(body);
-        return imgResult;
-      }
-      return result.affected > 0;
-    } catch (E) {
-      console.log(E);
-      return { msg: E };
-    }
-  }
+  }  
 
   async CommentDelete(commentidx: number): Promise<boolean> {
     try {
@@ -160,6 +118,7 @@ export class CommentService {
         .where({ idx: commentidx })
         .execute();
       if (result.affected > 0) {
+        const deleteImg = await this.commentImgService.DeleteCommentImg(commentidx)
         const deleteResult = await this.DeleteCmt_cmtFromComment(commentidx);
         return deleteResult;
       }
@@ -178,11 +137,14 @@ export class CommentService {
         .set({ pause: this.pause })
         .where({ postNum: nboidx })
         .execute();
+        
       if (result.affected > 0) {
         const deleteResult = await this.DeleteCmt_cmtFromNbo(nboidx);
+        console.log(deleteResult);
         return deleteResult;
+      }else{
+        return true;
       }
-      return false;
     } catch (E) {
       console.log(E);
       return false;
@@ -199,7 +161,11 @@ export class CommentService {
         .execute();
       if (result.affected > 0) {
         const deleteResult = await this.DeleteCmt_cmtFromComment(body.idx);
-        return deleteResult;
+        if(deleteResult){
+          const deleteImg = await this.commentImgService.DeleteCommentImg(NaN,body.idx)
+          const returnValue = await this.UpdateMinusCommentes(body.commentNum)
+          return returnValue;
+        }
       }
       return { msg: 0 };
     } catch (E) {
@@ -216,7 +182,7 @@ export class CommentService {
         .set({ pause: this.pause })
         .where({ commentNum: commentNum })
         .execute();
-      return result.affected > 0;
+      return true;
     } catch (E) {
       console.log(E);
       return false;
@@ -230,25 +196,31 @@ export class CommentService {
         .update(Cmt_cmtEntity)
         .set({ pause: this.pause })
         .where({ nboNum: nboNum })
-        .execute();
-      return result.affected > 0;
+        .execute();      
+      return true;
     } catch (E) {
       console.log(E);
       return false;
     }
   }
 
+  getCheckContentValue(fixValue: any, content: string) {
+    const value = content ? { content: content, ...fixValue } : { content: "", ...fixValue };
+    return value;
+  }
+
   async InsertCmt_cmt(body: CmtDTO) {
     try {
-      const value = {
+      const fixValue = {
         id: body.id,
         useridx: body.useridx,
         nboNum: body.nboNum,
         commentNum: body.commentNum,
         aka: body.aka,
-        content: body.content,
         isImg: Number(body.img ? this.use : this.pause),
+        imgupdate:body.imgupDate
       };
+      const value = this.getCheckContentValue(fixValue, body.content);
       const result = await this.commentRepository
         .createQueryBuilder()
         .insert()
@@ -292,7 +264,7 @@ export class CommentService {
       : await this.commentImgService.InsertCommentImg(body, idx);
     if (imgResult) {
       if (commentNum) {
-        const commentResult = await this.UpdateCommentes(body.commentNum);
+        const commentResult = await this.UpdatePlusCommentes(body.commentNum);
         const values = {
           idx: idx,
           writetime: writetime,
@@ -318,7 +290,7 @@ export class CommentService {
     const idx: number = result.identifiers[0].idx;
     const writetime = dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss');
     if (commentNum) {
-      const commentResult = await this.UpdateCommentes(commentNum);
+      const commentResult = await this.UpdatePlusCommentes(commentNum);
       const values = {
         idx: idx,
         writetime: writetime,
@@ -334,7 +306,7 @@ export class CommentService {
     return values as CommentEntity;
   }
 
-  async UpdateCommentes(idx: number): Promise<boolean> {
+  async UpdatePlusCommentes(idx: number): Promise<boolean> {
     try {
       const result = await this.commentRepository
         .createQueryBuilder()
@@ -343,7 +315,24 @@ export class CommentService {
         .where({ idx: idx })
         .execute();
 
-      console.log('UpdateCommentes');
+      console.log('UpdatePlusCommentes');
+      return result.affected > 0;
+    } catch (E) {
+      console.log(E);
+      return false;
+    }
+  }
+
+  async UpdateMinusCommentes(idx: number): Promise<boolean> {
+    try {
+      const result = await this.commentRepository
+        .createQueryBuilder()
+        .update(CommentEntity)
+        .set({ commentes: () => 'commentes - 1' })
+        .where('commentes > 0 AND idx = :idx',{ idx: idx })
+        .execute();
+
+      console.log('UpdateMinusCommentes');
       return result.affected > 0;
     } catch (E) {
       console.log(E);

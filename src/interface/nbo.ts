@@ -11,6 +11,7 @@ export interface NboInterface {
   title: string;
   content: string;
   commentCount:number;
+  imgupDate:string;
   imgIdxArr: number[];
   commentDto: CommentDTO[];
 }

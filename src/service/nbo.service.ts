@@ -8,7 +8,6 @@ import { NboDTO } from 'src/dto/nbo.dto';
 import { NboInterface } from 'src/interface/nbo';
 import { CmtDTO, CommentDTO } from 'src/dto/comment.dto';
 import { ConfigService } from '@nestjs/config';
-import { CommentEntity } from 'src/entity/comment.entity';
 import { NboViewsEntity } from 'src/entity/nbo_views.entity';
 import { NboSearchEntity } from 'src/entity/nbo_search.entity';
 
@@ -27,6 +26,8 @@ export class NboService {
     private config: ConfigService,
   ) {}
 
+  pause = Number(this.config.get<number>('PAUSE'));
+  use = Number(this.config.get<number>('USE'));
   private select =
     'idx,writetime,useridx,aka,likes,vilege,subject,title,content,isImg,commentes';
 
@@ -52,8 +53,6 @@ export class NboService {
         return await this.commentInsert(body);
       case 'commentDelete':
         return await this.commentDelete(body);
-      case 'commentUpdate':
-        return await this.commentService.CommentUpdate(body);
     }
   }
 
@@ -63,8 +62,7 @@ export class NboService {
         const result = await this.commentService.InsertCmt_cmt(body);
         if (result) {
           const updateResult = await this.updateCommentesPlusNbo(body.nboNum);
-          if(updateResult)
-            return result;
+          if (updateResult) return result;
         }
         return { msg: 0 };
       case 'cmtCmtDelete':
@@ -76,8 +74,6 @@ export class NboService {
           return minusCommentes;
         }
         return { msg: 0 };
-      case 'cmtCmtUpdate':
-        return await this.commentService.UpdateCmtcmt(body);
     }
   }
 
@@ -135,7 +131,10 @@ export class NboService {
       let result = false;
       const deleteResult = await this.commentService.CommentDelete(body.idx);
       if (deleteResult) {
-        result = await this.updateCommentesMinusNbo(body.postNum);
+        result = await this.updateCommentesMinusNbo(
+          body.postNum,
+          body.commentes,
+        );
       }
       return result;
     } catch (E) {
@@ -164,7 +163,7 @@ export class NboService {
       let result = false;
       const commentResult = await this.commentService.CommentInsert(body);
       if (commentResult) {
-        result = await this.updateCommentesPlusNbo(body.postNum);        
+        result = await this.updateCommentesPlusNbo(body.postNum);
         return commentResult;
       }
       return { msg: 0 };
@@ -198,20 +197,23 @@ export class NboService {
     }
   }
 
-  async ClickNbo(idx: number,id:string) {
+  async ClickNbo(idx: number, id: string) {
     try {
       const result: NboEntity = await this.nboRepository
         .createQueryBuilder()
-        .select(this.select)
+        .select(
+          `idx,writetime,useridx,aka,likes,vilege,subject,title,content,isImg,commentes, imgupdate`,
+        )
         .where({ idx: idx })
+        .andWhere({pause:this.use})
         .getRawOne();
 
       if (result) {
-        const commentReslt = await this.commentService.getComment(idx,id);
+        const commentReslt = await this.commentService.getComment(idx, id);
         const nbo_comment_imgIdxArr = await this.returnNboComment(
           result,
           commentReslt,
-          id
+          id,
         );
         console.log('nbo_comment_imgIdxArr ', nbo_comment_imgIdxArr);
         return nbo_comment_imgIdxArr;
@@ -244,6 +246,7 @@ export class NboService {
         .where(idxWhere)
         .andWhere(keywordWhere)
         .andWhere(searchWhere)
+        .andWhere({pause:this.use})
         .orderBy('idx', 'DESC')
         .limit(limit)
         .getRawMany();
@@ -286,6 +289,7 @@ export class NboService {
         .select(this.select)
         .where({ id: id })
         .andWhere(idxWhere)
+        .andWhere({pause:this.use})
         .orderBy('idx', 'DESC')
         .limit(limit)
         .getRawMany();
@@ -297,17 +301,22 @@ export class NboService {
   }
 
   async returnNboComment(
-    n: NboEntity,
-    commentArr: CommentEntity[],
-    userId:string
+    nboInfo: any,
+    commentArr: any[],
+    userId: string,
   ): Promise<NboInterface> {
-    const nboList: CommentDTO[] = [];
+    const nboList = [];
+    const commentIds = commentArr.map((c) => c.idx);
+    const allSubComments = await this.commentService.getCommentsByParentIds(
+      commentIds,
+      userId,
+    );
     for (const c of commentArr) {
-      let cmtArr: CmtDTO[] = [];
+      let cmtArr = [];
       if (c.commentes > 0) {
-        cmtArr = await this.commentService.getComments(c.idx,userId);
+        cmtArr = allSubComments.filter((s) => s.commentNum === c.idx);
       }
-      const model: CommentDTO = {
+      const model = {
         idx: c.idx,
         id: c.id,
         writetime: c.writetime,
@@ -317,25 +326,27 @@ export class NboService {
         likes: c.likes,
         content: c.content,
         isImg: c.isImg,
-        commentes:c.commentes,        
+        commentes: c.commentes,
+        imgupDate: c.imgupdate,
         comments: cmtArr,
       };
       nboList.push(model);
     }
 
-    const imgIdx_Arr = await this.nboImgService.imgIdxArr(n.idx);
+    const imgIdx_Arr = await this.nboImgService.imgIdxArr(nboInfo.idx);
 
     const nbo: NboInterface = {
-      idx: n.idx,
-      writetime: n.writetime,
-      useridx: n.useridx,
-      aka: n.aka,
-      likes: n.likes,
-      vilege: n.vilege,
-      subject: n.subject,
-      title: n.title,
-      content: n.content,
-      commentCount:n.commentes,
+      idx: nboInfo.idx,
+      writetime: nboInfo.writetime,
+      useridx: nboInfo.useridx,
+      aka: nboInfo.aka,
+      likes: nboInfo.likes,
+      vilege: nboInfo.vilege,
+      subject: nboInfo.subject,
+      title: nboInfo.title,
+      content: nboInfo.content,
+      commentCount: nboInfo.commentes,
+      imgupDate: nboInfo.imgupdate,
       imgIdxArr: imgIdx_Arr,
       commentDto: nboList,
     };
@@ -361,9 +372,10 @@ export class NboService {
         title: body.title,
         content: body.content,
         isImg: isImgExist,
+        imgupdate:body.imgupDate
       };
 
-      const result = await this.nboLogRepository
+      const result = await this.nboRepository
         .createQueryBuilder()
         .insert()
         .into(NboEntity)
@@ -398,20 +410,14 @@ export class NboService {
 
   async DeleteNbo(idx: number): Promise<boolean | { msg: string | number }> {
     try {
-      const LogInsertResult = await this.SelectToInsertNboLog(idx);
-
-      if (LogInsertResult) {
-        const nboImgLogResult = await this.nboImgService.DeleteNboImg(idx);
-
-        if (nboImgLogResult) {
-          const commentResult = await this.DeleteCommentFromNbo(idx);
-          if (commentResult) {
-            const result = await this.delete(idx);
-            return result;
-          }
+      const nboImgLogResult = await this.nboImgService.DeleteNboImg(idx);
+      if (nboImgLogResult) {
+        const commentResult = await this.DeleteCommentFromNbo(idx);
+        if (commentResult) {
+          const result = await this.delete(idx);
+          return result;
         }
       }
-
       return { msg: 0 };
     } catch (E) {
       console.log(E);
@@ -423,7 +429,8 @@ export class NboService {
     try {
       const result = await this.nboRepository
         .createQueryBuilder()
-        .delete()
+        .update(NboEntity)
+        .set({ pause: this.pause })
         .where({ idx: idx })
         .execute();
       return result.affected > 0;
@@ -455,7 +462,8 @@ export class NboService {
         .values([
           {
             id: body.id,
-            useridx:body.useridx,
+            useridx: body.useridx,
+            nboidx: body.idx,
             aka: body.aka,
             vilege: body.vilege,
             title: body.title,
@@ -471,7 +479,7 @@ export class NboService {
     }
   }
 
-  async UpdateNbo(body: NboDTO): Promise<any> {
+  async UpdateNbo(body: NboDTO) {
     try {
       const LogInsertResult = await this.SelectToInsertNboLog(body.idx);
 
@@ -490,12 +498,12 @@ export class NboService {
           .set(set)
           .where({ idx: body.idx })
           .execute();
-        console.log('UpdateNbo check: ', body.nboImgDto)
+
         if (result.affected > 0 && body.nboImgDto) {
           const nboImgResult = await this.nboImgService.UpdateImg(
             body.nboImgDto,
             body.idx,
-            body.isImg           
+            body.isImg,
           );
           return nboImgResult;
         }
@@ -522,14 +530,17 @@ export class NboService {
     }
   }
 
-  async updateCommentesMinusNbo(idx: number) {
+  async updateCommentesMinusNbo(idx: number, commentes?: number) {
     try {
       const result = await this.nboRepository
         .createQueryBuilder()
         .update(NboEntity)
-        .set({ commentes: () => 'commentes - 1' })
-        .where({ idx: idx })
+        .set({
+          commentes: () => `commentes - ${commentes ? commentes + 1 : 1}`,
+        })
+        .where('commentes > 0 AND idx = :idx', { idx: idx })
         .execute();
+      return true;
     } catch (E) {
       console.log('updateCommentesNbo ', E);
       return false;

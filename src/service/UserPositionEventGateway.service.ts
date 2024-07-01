@@ -47,13 +47,13 @@ export class UserPositionEventGateway
   }
 
   @SubscribeMessage('requestUserPositionData')
-  handleUserPositionDataRequest(client: Socket, payload: { mapRect: rect[],visible:number }) {
+ async handleUserPositionDataRequest(client: Socket, payload: { mapRect: rect[],visible:number }) {
     //위도 경도 바뀐 user만 값 반환
     console.log('DataOn');    
     //필요한 정보 보내기        
     if(payload.visible == this.visible){
-      console.log(dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss'));
-      const result = this.positionManager.getPosition(client.id, payload);         
+      console.log(dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss'));      
+      const result = this.positionManager.getPosition(client.id, payload);
       console.log(result.length);
       client.emit('UserPositionData', result);
     }else{            
@@ -63,7 +63,7 @@ export class UserPositionEventGateway
   }
 
   @SubscribeMessage('requestUpdate')
-  async handleRequestTest(client: Socket, payload: Position) {
+  async handleRequestUpdate(client: Socket, payload: Position) {
     //update user position
     console.log('UpdateOn');
 
@@ -75,19 +75,25 @@ export class UserPositionEventGateway
     console.log('UpdateOff');
   }
 
+  UpdateImgupDate(idx: number, imgupdate: string) {
+    this.positionManager.UpdateImgupDate(idx,imgupdate)  
+    return this.positionManager.getUser(idx)
+  }
+
   getUserPosition = async () => {
     const userList = await this.positionService.GetUserPosition('test');
     if (userList) {      
-      userList.map((user, index) => {        
-        this.positionManager.AddOrUpdatePosition(index, {
-          clientId: index,
+      userList.forEach((user, index) => {        
+        this.positionManager.AddOrUpdatePosition(index.toString(), {
+          clientId: index.toString(),
           aka: user.aka,
           userIdx: user.useridx,
           position: {
             lat: user.latitude,
             lng: user.longitude,
           },
-          visible: user.visible
+          visible: user.visible,
+          imgupDate:user.imgupdate
         });
       });      
     }

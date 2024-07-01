@@ -18,6 +18,14 @@ export class PositionManager {
     } else {
       this.positions.push(newPosition);
     }
+  }  
+
+  UpdateImgupDate(idx: number, imgupdate: string) {
+    const index = this.getIndex(idx, false);
+    if (index !== -1) {
+      const updatePosition = this.FindAndUpdateUser(idx, imgupdate);
+      this.AddOrUpdatePosition(updatePosition.clientId,updatePosition);
+    }
   }
 
   getIndex(value: any, useClientId: boolean) {
@@ -25,6 +33,19 @@ export class PositionManager {
       useClientId ? p.clientId === value : p.userIdx === value,
     );
     return index;
+  }
+
+  FindAndUpdateUser(useridx: number,imgupdate: string) {
+    const user = this.positions.find((p) => p.userIdx === useridx);
+    if (user) {
+      user.imgupDate = imgupdate;
+    }
+    return user;
+  }
+
+  getUser(useridx: number) {
+    const user = this.positions.find((p) => p.userIdx === useridx);    
+    return user;
   }
 
   removePosition(value: any, useClientId: boolean = true) {

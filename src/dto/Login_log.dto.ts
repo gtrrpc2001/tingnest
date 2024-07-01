@@ -10,7 +10,7 @@ export class Login_logDTO {
   @IsString()
   @IsOptional()
   @ApiProperty({ type: String, description: '' })
-  readonly writetime: string;
+  readonly writetime?: string;
 
   @IsString()
   @IsOptional()

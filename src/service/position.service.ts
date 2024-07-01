@@ -6,6 +6,9 @@ import {
   UserPositionEntity,
 } from 'src/entity/user_position.entity';
 import { PositionDTO } from 'src/dto/position.dto';
+import { UserEntity } from 'src/entity/user.entity';
+import { Position } from 'src/interface/Position';
+import { commonFun } from 'src/clsfunc/commonfunc';
 
 @Injectable()
 export class PositionService {
@@ -51,10 +54,7 @@ export class PositionService {
           {
             useridx: body.useridx,
             id: body.id,
-            imgupdate: body.imgupdate,
-            latitude: body.latitude,
-            longitude: body.longitude,
-            address: body.address,
+            imgupdate:body.imgupdate,
             aka: body.aka,
           },
         ])
@@ -70,11 +70,12 @@ export class PositionService {
 
   async UserPositionUpdate(body: PositionDTO): Promise<boolean> {
     try {
+      const renewtime = commonFun.getDayjs()
       const result = await this.userPositionRepository
         .createQueryBuilder()
         .update(UserPositionEntity)
         .set({
-          writetime: body.writetime,
+          writetime: renewtime,
           latitude: body.latitude,
           longitude: body.longitude,
         })
@@ -85,7 +86,7 @@ export class PositionService {
       console.log(E);
       return false;
     }
-  }
+  }  
 
   async UserPositionUpdateAddress(
     id: string,
@@ -103,25 +104,7 @@ export class PositionService {
       console.log(E);
       return false;
     }
-  }
-
-  async UserPositionUpdateRenewDate(
-    id: string,
-    renewtime: string,
-  ): Promise<boolean> {
-    try {
-      const result = await this.userPositionRepository
-        .createQueryBuilder()
-        .update(UserPositionEntity)
-        .set({ renewtime: renewtime })
-        .where({ id: id })
-        .execute();
-      return true;
-    } catch (E) {
-      console.log(E);
-      return false;
-    }
-  }
+  }  
 
   async getUserPositionVisible(id: string): Promise<number> {
     try {
@@ -153,17 +136,17 @@ export class PositionService {
     }
   }
 
-  async GetUserPosition(id: string): Promise<any> {
+  async GetUserPosition(id: string) {
     try {
-      const result: UserPositionEntity[] = await this.userPositionRepository
-        .createQueryBuilder('position')
-        .select('useridx,aka,latitude,longitude,visible')
-        .where('position.id != :id', { id: id })
+      const result = await this.userPositionRepository
+        .createQueryBuilder()
+        .select('useridx,aka,latitude,longitude,visible,imgupdate')
+        .where(`id != '${id}'`)
         .getRawMany();
       return result;
     } catch (E) {
       console.log(E);
-      return false;
+      return [];
     }
   }
 }

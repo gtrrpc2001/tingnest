@@ -11,6 +11,9 @@ export class CommentEntity {
   @Column({ type: 'datetime' })
   writetime: string;
 
+  @Column({ type: 'datetime' })
+  imgupdate: string;
+
   @Column({ type: 'int' })
   useridx: number;
 
@@ -46,6 +49,9 @@ export class Cmt_cmtEntity {
 
   @Column({ type: 'datetime' })
   writetime: string;
+
+  @Column({ type: 'datetime' })
+  imgupdate: string;
 
   @Column({ type: 'int' })
   useridx: number;

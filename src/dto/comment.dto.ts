@@ -22,12 +22,18 @@ export class CommentDTO {
   @ApiProperty({ type: String, description: '' })
   readonly writetime: string;
 
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ type: String, description: '' })
+  readonly imgupDate: string;
+
   @IsNumber()
   @IsOptional()
   @ApiProperty({ type: Number, description: '' })
   readonly useridx: number;
 
   @IsNumber()
+  @IsOptional()
   @ApiProperty({ type: Number, description: '' })
   readonly postNum: number;
 
@@ -58,11 +64,11 @@ export class CommentDTO {
 
   @IsArray()
   @IsOptional()
-  @ApiProperty({ type: 'number[]', description: '' })
-  readonly img?: number[];
+  @ApiProperty({ type: 'number[][]', description: '' })
+  readonly img?: number[][];
 
   @IsOptional()
-  @ApiProperty({ type: 'commentArray', description: 'commentArray' })
+  @ApiProperty({ type: 'CmtDTO[]', description: 'commentArray' })
   readonly comments?:CmtDTO[]
 }
 
@@ -87,12 +93,18 @@ export class CmtDTO {
   @ApiProperty({ type: String, description: '' })
   readonly writetime: string;
 
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ type: String, description: '' })
+  readonly imgupDate: string;
+  
   @IsNumber()
   @IsOptional()
   @ApiProperty({ type: Number, description: '' })
   readonly useridx: number;
 
   @IsNumber()
+  @IsOptional()
   @ApiProperty({ type: Number, description: '' })
   readonly nboNum: number;
 
@@ -122,6 +134,6 @@ export class CmtDTO {
 
   @IsArray()
   @IsOptional()
-  @ApiProperty({ type: 'number[]', description: '' })
-  readonly img?: number[];
+  @ApiProperty({ type: 'number[][]', description: '' })
+  readonly img?: number[][];
 }

@@ -21,15 +21,14 @@ export class UserController {
   }
 
   @Get('/mapProfiles')
-  async sendImageFile(@Res() res: Response, @Query('idx') idx: number) {
-    await this.userService.sendProfile(res, idx);
+  async sendImageFile(@Res() res: Response, @Query('idx') idx: number, @Query('imgupDate') imgupdate?: string) {    
+    await this.userService.sendProfile(res, idx,imgupdate);
   }
 
-  @Get('/test')
-  async test() {    
-    const path = this.config.get<string>('DEFAULT_PROFILE_IMAGE_PATH')
-    const profile = await commonFun.getDefault_ImageAsBase64(path)
-    return profile
+  @Post('/test')
+  async test(@Body() body: UserDTO) {        
+    // const profile = await this.userService.test(body)
+    // return profile
   }
   
 }

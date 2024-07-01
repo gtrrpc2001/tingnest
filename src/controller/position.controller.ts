@@ -12,4 +12,9 @@ export class PositionController {
   async visibleUpdate(@Body() body: PositionDTO): Promise<any> {
     return await this.positionService.updateVisible(body);
   }
+
+  @Get('/test')
+  async test(@Query() id: string){
+    return await this.positionService.GetUserPosition(id);
+  }
 }

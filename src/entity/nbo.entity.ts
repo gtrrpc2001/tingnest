@@ -14,6 +14,9 @@ export class NboEntity {
   @Column({ type: 'int' })
   useridx: number;
 
+  @Column({ type: 'datetime' })
+  imgupdate: string;
+
   @Column({ type: 'varchar' })
   aka: string;
 
@@ -40,6 +43,9 @@ export class NboEntity {
 
   @Column({ type: 'int' })
   views: number;
+
+  @Column({ type: 'tinyint' })
+  pause: number;
 }
 
 @Entity('nbo_log')
@@ -55,6 +61,9 @@ export class NboLogEntity {
 
   @Column({ type: 'int' })
   useridx: number;
+
+  @Column({ type: 'int' })
+  nboidx: number;
 
   @Column({ type: 'varchar' })
   aka: string;
