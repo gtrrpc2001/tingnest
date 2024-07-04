@@ -19,7 +19,7 @@ export class PositionDTO {
   @IsString()
   @IsOptional()
   @ApiProperty({ type: String, description: '' })
-  readonly imgupdate?: string;
+  readonly imgupDate?: string;
 
   @IsNumber()
   @IsOptional()

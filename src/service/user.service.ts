@@ -181,7 +181,7 @@ export class UserService {
         .createQueryBuilder()
         .update(UserEntity)
         .set({
-          imgupdate: imgupdate,
+          imgupDate: imgupdate,
           profile: profile,
         })
         .where({ idx: body.idx })
@@ -234,7 +234,7 @@ export class UserService {
         useridx: result,
         id: body.id,
         aka: body.aka,
-        imgupdate: imgupdate,
+        imgupDate: imgupdate,
       };
       console.log(positionBody);
       const userPositionResult =
@@ -266,7 +266,7 @@ export class UserService {
             pwd: AESpwd,
             birth: body.birth,
             gender: body.gender,
-            imgupdate: imgupdate,
+            imgupDate: imgupdate,
             profile: profile,
             aka: body.aka,
             guard: 0,
@@ -315,11 +315,11 @@ export class UserService {
       const result: UserEntity = await this.userRepository
         .createQueryBuilder()
         .select('profile')
-        .where({ id: 'test' })
+        // .where({ id: 'test' })
+        .where({"idx":idx})
+        // .andWhere({ activate: this.activate })
         .getRawOne();
-      // .andWhere(imgDate)
-      // .where({"idx":idx})
-      // .andWhere({ activate: this.activate })
+      // .andWhere(imgDate)      
       if (result.profile) {
         commonFun.ResponseImage(res, result.profile);
       } else {

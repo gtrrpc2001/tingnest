@@ -14,7 +14,7 @@ export class UserPositionEntity {
   writetime: string;
 
   @Column({ type: 'datetime' })
-  imgupdate: string;
+  imgupDate: string;
 
   @Column({ type: 'double' })
   latitude: number;

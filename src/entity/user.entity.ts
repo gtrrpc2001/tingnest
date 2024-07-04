@@ -27,7 +27,7 @@ export class UserEntity {
   pause: number;
 
   @Column({ type: 'datetime' })
-  imgupdate: string;
+  imgupDate: string;
 
   @Column({ type: 'mediumblob' })
   profile: Buffer;

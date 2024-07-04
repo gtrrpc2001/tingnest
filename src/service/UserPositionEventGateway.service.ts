@@ -81,7 +81,7 @@ export class UserPositionEventGateway
   }
 
   getUserPosition = async () => {
-    const userList = await this.positionService.GetUserPosition('test');
+    const userList = await this.positionService.GetUserPosition('realtest');
     if (userList) {      
       userList.forEach((user, index) => {        
         this.positionManager.AddOrUpdatePosition(index.toString(), {
@@ -93,7 +93,7 @@ export class UserPositionEventGateway
             lng: user.longitude,
           },
           visible: user.visible,
-          imgupDate:user.imgupdate
+          imgupDate:user.imgupDate
         });
       });      
     }

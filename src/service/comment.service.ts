@@ -29,7 +29,7 @@ export class CommentService {
         postNum: body.postNum,
         aka: body.aka,
         isImg: Number(body.img ? this.use : this.pause),
-        imgupdate:body.imgupDate
+        imgupDate:body.imgupDate
       };
       const value = this.getCheckContentValue(fixValue, body.content);
       const result = await this.commentRepository
@@ -60,7 +60,7 @@ export class CommentService {
     try {      
       const result: CommentEntity[] = await this.commentRepository
         .createQueryBuilder()
-        .select('idx,id,writetime,useridx,postNum,aka,likes,content,isImg,commentes,imgupdate')
+        .select('idx,id,writetime,useridx,postNum,aka,likes,content,isImg,commentes,imgupDate')
         .where({ postNum: postNum })
         .andWhere({ pause: this.use })
         .orderBy('likes', 'DESC')
@@ -78,7 +78,7 @@ export class CommentService {
     try {            
       const result = await this.cmt_cmtRepository
         .createQueryBuilder()
-        .select('idx,id,writetime,useridx,nboNum,commentNum,aka,likes,content,isImg,imgupdate')
+        .select('idx,id,writetime,useridx,nboNum,commentNum,aka,likes,content,isImg,imgupDate')
         .where(`commentNum IN (${commentNums})`)
         .andWhere({ pause: this.use })
         .orderBy('likes', 'DESC')
@@ -218,7 +218,7 @@ export class CommentService {
         commentNum: body.commentNum,
         aka: body.aka,
         isImg: Number(body.img ? this.use : this.pause),
-        imgupdate:body.imgupDate
+        imgupDate:body.imgupDate
       };
       const value = this.getCheckContentValue(fixValue, body.content);
       const result = await this.commentRepository

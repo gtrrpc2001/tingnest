@@ -10,6 +10,8 @@ import { CmtDTO, CommentDTO } from 'src/dto/comment.dto';
 import { ConfigService } from '@nestjs/config';
 import { NboViewsEntity } from 'src/entity/nbo_views.entity';
 import { NboSearchEntity } from 'src/entity/nbo_search.entity';
+import { commonFun } from 'src/clsfunc/commonfunc';
+import { NboImgEntity } from 'src/entity/nboImg.entity';
 
 @Injectable()
 export class NboService {
@@ -29,7 +31,7 @@ export class NboService {
   pause = Number(this.config.get<number>('PAUSE'));
   use = Number(this.config.get<number>('USE'));
   private select =
-    'idx,writetime,useridx,aka,likes,vilege,subject,title,content,isImg,commentes';
+    'a.idx,a.writetime,a.useridx,a.aka,a.likes,a.vilege,a.subject,a.title,a.content,a.isImg,a.commentes,b.idx AS imgIdx';
 
   async NboGubunKind(body: NboDTO): Promise<any> {
     switch (body.kind) {
@@ -202,7 +204,7 @@ export class NboService {
       const result: NboEntity = await this.nboRepository
         .createQueryBuilder()
         .select(
-          `idx,writetime,useridx,aka,likes,vilege,subject,title,content,isImg,commentes, imgupdate`,
+          `idx,writetime,useridx,aka,likes,vilege,subject,title,content,isImg,commentes,imgupDate`,
         )
         .where({ idx: idx })
         .andWhere({pause:this.use})
@@ -215,7 +217,6 @@ export class NboService {
           commentReslt,
           id,
         );
-        console.log('nbo_comment_imgIdxArr ', nbo_comment_imgIdxArr);
         return nbo_comment_imgIdxArr;
       } else {
         return { msg: 0 };
@@ -235,30 +236,33 @@ export class NboService {
   ): Promise<NboEntity[]> {
     try {
       const idxWhere = idx ? { idx: LessThan(idx) } : '1=1';
-      const keywordWhere = keyword ? `subject = '${keyword}'` : '1=1';
+      const keywordWhere = keyword ? {subject: keyword} : '1=1';
       if (search) {
         await this.InsertSearch(id, search);
       }
-      const searchWhere = search ? `title LIKE '%${search}%'` : '1=1';
-      const result: NboEntity[] = await this.nboRepository
-        .createQueryBuilder()
+      console.log(keywordWhere)
+      const searchWhere = search ? `a.title LIKE '%${search}%'` : '1=1';
+      const join = await this.nboImgService.JoinImage()
+      const result = await this.nboRepository
+        .createQueryBuilder('a')
         .select(this.select)
+        .leftJoin(join,'b','a.idx = b.nboidx')
         .where(idxWhere)
         .andWhere(keywordWhere)
         .andWhere(searchWhere)
         .andWhere({pause:this.use})
         .orderBy('idx', 'DESC')
         .limit(limit)
-        .getRawMany();
-      return result;
+        .getRawMany();      
+      return result
     } catch (E) {
       console.log(E);
       return [];
     }
-  }
+  }  
 
   async InsertSearch(id: string, search: string): Promise<boolean> {
-    try {
+    try {      
       const result = await this.nboSearchRepository
         .createQueryBuilder()
         .insert()
@@ -284,9 +288,11 @@ export class NboService {
   ): Promise<NboEntity[]> {
     try {
       const idxWhere = idx > 0 ? { idx: LessThan(idx) } : '1=1';
+      const join = await this.nboImgService.JoinImage()
       const result: NboEntity[] = await this.nboRepository
-        .createQueryBuilder()
+        .createQueryBuilder('a')
         .select(this.select)
+        .leftJoin(join,'b','a.idx = b.nboidx')
         .where({ id: id })
         .andWhere(idxWhere)
         .andWhere({pause:this.use})
@@ -306,7 +312,7 @@ export class NboService {
     userId: string,
   ): Promise<NboInterface> {
     const nboList = [];
-    const commentIds = commentArr.map((c) => c.idx);
+    const commentIds = commentArr.map((c) => c.idx);    
     const allSubComments = await this.commentService.getCommentsByParentIds(
       commentIds,
       userId,
@@ -314,7 +320,7 @@ export class NboService {
     for (const c of commentArr) {
       let cmtArr = [];
       if (c.commentes > 0) {
-        cmtArr = allSubComments.filter((s) => s.commentNum === c.idx);
+        cmtArr = allSubComments.filter((s) => s.commentNum === c.idx);        
       }
       const model = {
         idx: c.idx,
@@ -327,9 +333,9 @@ export class NboService {
         content: c.content,
         isImg: c.isImg,
         commentes: c.commentes,
-        imgupDate: c.imgupdate,
+        imgupDate: c.imgupDate,
         comments: cmtArr,
-      };
+      };      
       nboList.push(model);
     }
 
@@ -346,7 +352,7 @@ export class NboService {
       title: nboInfo.title,
       content: nboInfo.content,
       commentCount: nboInfo.commentes,
-      imgupDate: nboInfo.imgupdate,
+      imgupDate: nboInfo.imgupDate,
       imgIdxArr: imgIdx_Arr,
       commentDto: nboList,
     };
@@ -372,7 +378,7 @@ export class NboService {
         title: body.title,
         content: body.content,
         isImg: isImgExist,
-        imgupdate:body.imgupDate
+        imgupDate:body.imgupDate
       };
 
       const result = await this.nboRepository
@@ -484,12 +490,14 @@ export class NboService {
       const LogInsertResult = await this.SelectToInsertNboLog(body.idx);
 
       if (LogInsertResult) {
-        const isImgExist = this.getIs_imgExist(body.nboImgDto.nboImg);
+        const writetime = commonFun.getDayjs()
         const set = {
+          writetime: writetime,
           vilege: body.vilege,
-          writetime: body.writetime,
+          subject:body.subject,
+          title:body.title,
           content: body.content,
-          isImg: isImgExist,
+          isImg: body.isImg,
         };
 
         const result = await this.nboRepository
@@ -504,9 +512,11 @@ export class NboService {
             body.nboImgDto,
             body.idx,
             body.isImg,
+            body.id
           );
           return nboImgResult;
         }
+        return result.affected > 0;
       }
       return { msg: 0 };
     } catch (E) {

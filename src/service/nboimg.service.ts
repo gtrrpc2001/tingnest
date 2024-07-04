@@ -5,7 +5,7 @@ import { NboImgEntity, nboImgLogEntity } from 'src/entity/nboImg.entity';
 import { NboImgDTO } from 'src/dto/nboimg.dto';
 import { commonFun } from 'src/clsfunc/commonfunc';
 import { Response } from 'express';
-import * as dayjs from 'dayjs';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class NboImgService {
@@ -14,7 +14,10 @@ export class NboImgService {
     private nboImgRepository: Repository<NboImgEntity>,
     @InjectRepository(nboImgLogEntity)
     private nboImgLogRepository: Repository<nboImgLogEntity>,
+    private config: ConfigService,
   ) {}
+
+  pause = Number(this.config.get<number>('PAUSE'));
 
   async InsertImg(
     nboImg: number[][],
@@ -50,63 +53,89 @@ export class NboImgService {
     }
   }
 
-  async UpdateImg(
-    body: NboImgDTO,
-    nboidx: number,
-    isImg: number,
-  ) {
+  async UpdateImg(body: NboImgDTO, nboidx: number, isImg: number, id: string) {
     try {
-      let isSuccess;      
-      if (isImg) {
-        for (const idx of body.idx) {          
-          isSuccess = await this.updateImages(idx,nboidx,null)
-          if(!isSuccess){
+      let isSuccess;
+      const idxArr = [];
+      if (body.nboImg.length > 0) {
+        for (const [index, value] of body.nboImg.entries()) {
+          let idx;
+          if (body.idx) {
+            idx = body.idx.length - 1 >= index ? body.idx[index] : null;
+          }
+          isSuccess = await this.updateImages(idx, nboidx, id, value);
+          if (!isSuccess) {
             break;
           }
-        }        
-      } else {
-        const idxArr:number[] = []
-        for (const [index, value] of body.nboImg.entries()) {          
-          isSuccess = await this.updateImages(body.idx[index],nboidx,value)
-          if(!isSuccess){
-            break;
-          }
-          idxArr.push(isSuccess)
+          idxArr.push(isSuccess);
         }
-        return idxArr;
+      } else {
+        for (const idx of body.idx) {
+          isSuccess = await this.updateImages(idx, nboidx, id, null);
+          if (!isSuccess) {
+            break;
+          }
+          idxArr.push(isSuccess);
+        }
       }
-      console.log('UpdateImg');
-      return isSuccess;
+      return idxArr.length > 0;
     } catch (E) {
       console.log(E);
       return false;
     }
   }
 
-  async updateImages(idx: number, nboidx: number,value?:number[]) {
-    const imageLogData = await this.getImage(idx);
-    const imageLogInsertResult = await this.InsertImgLog(imageLogData, nboidx);
+  async JoinImage(){
+    const subQuery = await this.nboImgRepository.createQueryBuilder()
+    .subQuery()    
+    .select('id,nboidx,MIN(idx) AS idx')
+    .from(NboImgEntity, '')
+    .groupBy('id,nboidx')
+    .getQuery();
+    return subQuery;
+  }
+
+  async updateImages(
+    idx: number,
+    nboidx: number,
+    id: string,
+    value?: number[],
+  ) {
+    let imageLogData: NboImgEntity;
+    let imageLogInsertResult = false;
+    let deleteResult;
+
+    if (idx) {
+      imageLogData = await this.getImage(idx);
+      imageLogInsertResult = await this.InsertImgLog(imageLogData, nboidx);
+    }
+
     if (imageLogInsertResult) {
-      const deleteResult = await this.deleteOne(idx);
-      if(value && deleteResult){
-        const img = commonFun.getImageBuffer(value)
-        const result = await this.nboImgRepository
-          .createQueryBuilder()
-          .insert()
-          .into(NboImgEntity)
-          .values([{
-            id: imageLogData.id,
+      deleteResult = await this.deleteOne(idx);
+    }
+
+    if (value) {
+      const img = commonFun.getImageBuffer(value);
+      console.log('insertimage', deleteResult);
+      const result = await this.nboImgRepository
+        .createQueryBuilder()
+        .insert()
+        .into(NboImgEntity)
+        .values([
+          {
+            id: id,
             nboidx: nboidx,
             nboImg: img,
-          }])
-          .execute();
-          if(result.identifiers.length > 0){
-            return Number(result.identifiers[0].idx)
-          }
-      }else if(deleteResult){
-        return deleteResult;
+          },
+        ])
+        .execute();
+      if (result.identifiers.length > 0) {
+        return Number(result.identifiers[0].idx);
       }
+    } else if (deleteResult) {
+      return deleteResult;
     }
+
     return false;
   }
 
@@ -150,35 +179,14 @@ export class NboImgService {
     } catch (E) {
       console.log('selectImg : ' + E);
     }
-  }
+  } 
 
-  async selectFirstImg(nboidx: number): Promise<Buffer> {
+  async sendFirstImg(res: Response, idx: number) {
     try {
       const result: NboImgEntity = await this.nboImgRepository
         .createQueryBuilder()
         .select('idx,nboImg')
-        .where({ nboidx: nboidx })
-        .orderBy('idx', 'ASC')
-        .getRawOne();
-
-      console.log('selectFirstImg');
-      if (result) {
-        return result.nboImg;
-      } else {
-        return null;
-      }
-    } catch (E) {
-      console.log('selectFirstImg : ' + E);
-      return null;
-    }
-  }
-
-  async sendFirstImg(res: Response, nboidx: number) {
-    try {
-      const result: NboImgEntity = await this.nboImgRepository
-        .createQueryBuilder()
-        .select('idx,nboImg')
-        .where({ nboidx: nboidx })
+        .where({ idx: idx })
         .orderBy('idx', 'ASC')
         .getRawOne();
       if (result.nboImg) {
@@ -192,6 +200,21 @@ export class NboImgService {
   async sendImg(res: Response, idx: number) {
     try {
       const result: NboImgEntity = await this.nboImgRepository
+        .createQueryBuilder()
+        .select('nboImg')
+        .where({ idx: idx })
+        .getRawOne();
+      if (result.nboImg) {
+        commonFun.ResponseImage(res, result.nboImg);
+      }
+    } catch (E) {
+      res.send({ msg: E });
+    }
+  }
+
+  async sendImgLog(res: Response, idx: number) {
+    try {
+      const result: nboImgLogEntity = await this.nboImgLogRepository
         .createQueryBuilder()
         .select('nboImg')
         .where({ idx: idx })
@@ -223,7 +246,7 @@ export class NboImgService {
   async DeleteNboImg(nboidx: number): Promise<boolean> {
     try {
       const nboImges = await this.selectImg(nboidx);
-      if(nboImges.length > 0) {
+      if (nboImges.length > 0) {
         const results = [];
         for (const i of nboImges) {
           const result = await this.InsertImgLog(i, nboidx);
@@ -235,7 +258,7 @@ export class NboImgService {
         } else {
           return false;
         }
-      }else{
+      } else {
         return true;
       }
     } catch (E) {
@@ -265,6 +288,7 @@ export class NboImgService {
         .delete()
         .where({ idx: idx })
         .execute();
+      console.log('deleteOne');
       return result.affected > 0;
     } catch (E) {
       console.log('delete : ' + E);

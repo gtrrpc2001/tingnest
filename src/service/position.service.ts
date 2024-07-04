@@ -54,7 +54,7 @@ export class PositionService {
           {
             useridx: body.useridx,
             id: body.id,
-            imgupdate:body.imgupdate,
+            imgupDate:body.imgupDate,
             aka: body.aka,
           },
         ])
@@ -140,7 +140,7 @@ export class PositionService {
     try {
       const result = await this.userPositionRepository
         .createQueryBuilder()
-        .select('useridx,aka,latitude,longitude,visible,imgupdate')
+        .select('useridx,aka,latitude,longitude,visible,imgupDate')
         .where(`id != '${id}'`)
         .getRawMany();
       return result;

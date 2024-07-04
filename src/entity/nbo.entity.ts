@@ -15,7 +15,7 @@ export class NboEntity {
   useridx: number;
 
   @Column({ type: 'datetime' })
-  imgupdate: string;
+  imgupDate: string;
 
   @Column({ type: 'varchar' })
   aka: string;

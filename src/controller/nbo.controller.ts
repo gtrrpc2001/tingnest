@@ -15,8 +15,8 @@ export class nboController {
   constructor(
     private readonly nboService: NboService,
     private readonly nboImgService: NboImgService,
-    private readonly commentService:CommentService,
-    private readonly commentImgService:CommentImgService
+    private readonly commentService: CommentService,
+    private readonly commentImgService: CommentImgService,
   ) {}
 
   @Post('/api_post')
@@ -38,10 +38,10 @@ export class nboController {
   async getSelect(
     @Query('limit') limit: number,
     @Query('id') id: string,
-    @Query('keyword') keyword?: string,
     @Query('idx') idx?: number,
+    @Query('keyword') keyword?: string,
     @Query('search') search?: string,
-    @Query('mine') mine?:number
+    @Query('mine') mine?: number,
   ): Promise<any> {
     return await this.nboService.getSelectNboInfo(
       id,
@@ -49,22 +49,22 @@ export class nboController {
       limit,
       idx,
       search,
-      mine
+      mine,
     );
   }
 
   @Get('/nboClick')
   async getClick(@Query('idx') idx: number, @Query('id') id: string) {
     const result = await this.nboService.Add_NboViews(idx, id);
-    return await this.nboService.ClickNbo(idx,id);
+    return await this.nboService.ClickNbo(idx, id);
   }
 
   @Get('/nboImgFirstSelect')
   async getImgFirstSelect(
     @Res() res: Response,
-    @Query('nboidx') nboidx: number,
+    @Query('nboidx') idx: number,
   ): Promise<any> {
-    return await this.nboImgService.sendFirstImg(res, nboidx);
+    return await this.nboImgService.sendFirstImg(res, idx);
   }
 
   @Get('/nboImgSelect')
@@ -93,7 +93,7 @@ export class nboController {
 
   @Get('/nbo_Subject')
   async getSubject(@Query('length') length: number): Promise<string[]> {
-    console.log(length)
+    console.log(length);
     if (subject.length != length) {
       return subject;
     } else {
@@ -102,7 +102,7 @@ export class nboController {
   }
 
   @Get('/test')
-  async test(@Query('parentId') parentId: number[],@Query('userid') userid:string){
-    return await this.commentService.getCommentsByParentIds(parentId,userid)
+  async test(@Res() res: Response, @Query('imgIdx') idx: number) {
+    return await this.nboImgService.sendImgLog(res, idx);
   }
 }
